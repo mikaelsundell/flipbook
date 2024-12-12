@@ -14,6 +14,9 @@ References
 * QRhiWidget   
 https://doc.qt.io/qt-6/qrhiwidget.html
 
+* Qt GUI Private C++ Classes
+https://doc.qt.io/qt-6/qtguiprivate-module.html
+
 * AVFoundation   
 https://developer.apple.com/documentation/avfoundation/
 
