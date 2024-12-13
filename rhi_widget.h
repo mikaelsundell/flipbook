@@ -1,7 +1,5 @@
-//
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2022 - present Mikael Sundell.
-//
 
 #pragma once
 
@@ -16,7 +14,7 @@ class rhi_widget : public QRhiWidget
     public:
         rhi_widget(QWidget* parent = nullptr);
         virtual ~rhi_widget();
-        void setImage(const QImage& image);
+        void set_image(const QImage& image);
     
     protected:
         void initialize(QRhiCommandBuffer* cb) override;

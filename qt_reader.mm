@@ -14,18 +14,14 @@ class qt_reader_private
         bool open();
         void close();
         QImage frame(int frame);
-        int start() const;
-        int end() const;
-        int fps() const;
 
     public:
         QString filename;
         AVAsset* asset = nil;
         AVAssetReader* reader = nil;
         AVAssetReaderTrackOutput* output = nil;
-        int framecount = 0;
-        int framerate = 0;
-
+        int count = 0;
+        float fps = 0;
 };
 
 qt_reader_private::qt_reader_private()
@@ -44,23 +40,23 @@ qt_reader_private::open()
     NSURL* url = [NSURL fileURLWithPath:filename.toNSString()];
     asset = [AVAsset assetWithURL:url];
     if (!asset) {
-        qWarning() << "error: Unable to load asset from file:" << filename;
+        qWarning() << "warning: Unable to load asset from file:" << filename;
         return false;
     }
     NSError* error = nil;
     reader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
     if (!reader) {
-        qWarning() << "error: unable to create AVAssetReader:" << error.localizedDescription;
+        qWarning() << "warning: unable to create AVAssetReader:" << error.localizedDescription;
         return false;
     }
 
     AVAssetTrack* track = [[asset tracksWithMediaType:AVMediaTypeVideo] firstObject];
     if (!track) {
-        qWarning() << "error: no video track found in file:" << filename;
+        qWarning() << "warning: no video track found in file:" << filename;
         return false;
     }
-    framerate = track.nominalFrameRate;
-    framecount = CMTimeGetSeconds(track.timeRange.duration) * framerate;
+    fps = track.nominalFrameRate;
+    count = CMTimeGetSeconds(track.timeRange.duration) * fps;
     
     output = [[AVAssetReaderTrackOutput alloc]
         initWithTrack:track
@@ -69,7 +65,7 @@ qt_reader_private::open()
     }];
     
     if (!output) {
-        qWarning() << "error: unable to create AVAssetReaderTrackOutput.";
+        qWarning() << "warning: unable to create AVAssetReaderTrackOutput.";
         return false;
     }
 
@@ -87,34 +83,35 @@ qt_reader_private::close()
     }
     output = nil;
     asset = nil;
-    framecount = 0;
-    framerate = 0;
+    count = 0;
+    fps = 0;
 }
 
-QImage qt_reader_private::frame(int frame)
+QImage
+qt_reader_private::frame(int frame)
 {
     if (!reader || reader.status != AVAssetReaderStatusReading) {
-        qWarning() << "error: AVAssetReader is not in a valid state.";
+        qWarning() << "warning: AVAssetReader is not in a valid state.";
         return QImage();
     }
     for (int i = 0; i < frame; ++i) {
         CMSampleBufferRef sampleBuffer = [output copyNextSampleBuffer];
         if (!sampleBuffer) {
-            qWarning() << "error: unable to read next sample buffer.";
+            qWarning() << "warning: unable to read next sample buffer.";
             return QImage();
         }
         CFRelease(sampleBuffer);
     }
     CMSampleBufferRef sampleBuffer = [output copyNextSampleBuffer];
     if (!sampleBuffer) {
-        qWarning() << "error: unable to read next sample buffer.";
+        qWarning() << "warning: unable to read next sample buffer.";
         return QImage();
     }
 
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     if (!imageBuffer) {
         CFRelease(sampleBuffer);
-        qWarning() << "error: CMSampleBuffer has no image buffer.";
+        qWarning() << "warning: CMSampleBuffer has no image buffer.";
         return QImage();
     }
     CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
@@ -128,24 +125,6 @@ QImage qt_reader_private::frame(int frame)
     return img.copy();
 }
 
-int
-qt_reader_private::start() const
-{
-    return 0;
-}
-
-int
-qt_reader_private::end() const
-{
-    return framecount;
-}
-
-int
-qt_reader_private::fps() const
-{
-    return framerate;
-}
-
 qt_reader::qt_reader()
 : p(new qt_reader_private())
 {
@@ -154,6 +133,12 @@ qt_reader::qt_reader()
 
 qt_reader::~qt_reader()
 {
+}
+
+bool
+qt_reader::is_open() const
+{
+    return p->filename.size();
 }
 
 bool
@@ -183,17 +168,17 @@ qt_reader::frame(int frame)
 int
 qt_reader::start() const
 {
-    return p->start();
+    return 0;
 }
 
 int
 qt_reader::end() const
 {
-    return p->end();
+    return p->count;
 }
 
-int
+float
 qt_reader::fps()
 {
-    return p->fps();
+    return p->fps;
 }

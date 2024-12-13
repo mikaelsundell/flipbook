@@ -16,11 +16,10 @@ class rhi_widget_private : public QObject
         void render();
         void reset(QRhiRenderTarget* target);
         QShader shader(const QString& name);
-        void setImage(const QImage& image);
+        void set_image(const QImage& image);
 
     public:
         QImage checkerboard(int width, int height, int size);
-    
         QRhi* rhi = nullptr;
         std::unique_ptr<QRhiGraphicsPipeline> pipeline;
         std::unique_ptr<QRhiBuffer> vertexbuffer;
@@ -41,13 +40,7 @@ rhi_widget_private::rhi_widget_private()
 void
 rhi_widget_private::init()
 {
-    vertexdata = {
-        -0.5f,  0.5f, 0.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
-         0.5f, -0.5f, 0.0f, 1.0f, 1.0f
-    };
-    texturedata = checkerboard(256, 256, 32);
+    set_image(checkerboard(1920, 1080, 32)); // checker HD image
 }
 
 void
@@ -69,19 +62,19 @@ rhi_widget_private::shader(const QString& name)
     if (file.open(QIODevice::ReadOnly)) {
         return QShader::fromSerialized(file.readAll());
     } else {
-        qWarning() << "error: Unable to open shader file:" << path;
+        qWarning() << "warning: unable to open shader file:" << path;
         return QShader();
     }
 }
 
 void
-rhi_widget_private::setImage(const QImage& image)
+rhi_widget_private::set_image(const QImage& image)
 {
+    rhi = nullptr;
     texturedata = image;
     if (texturedata.format() != QImage::Format_RGBA8888) {
         texturedata = texturedata.convertToFormat(QImage::Format_RGBA8888);
     }
-    rhi = nullptr;
     float aspect = static_cast<float>(image.width()) / static_cast<float>(image.height());
     vertexdata = {
         -0.5f * aspect,  0.5f, 0.0f, 0.0f, 0.0f,
@@ -124,9 +117,9 @@ rhi_widget::~rhi_widget()
 }
 
 void
-rhi_widget::setImage(const QImage& image)
+rhi_widget::set_image(const QImage& image)
 {
-    p->setImage(image);
+    p->set_image(image);
 }
 
 void
@@ -136,13 +129,42 @@ rhi_widget::initialize(QRhiCommandBuffer* cb)
         p->pipeline.reset();
         p->rhi = rhi();
     }
+    
+    static bool info = true;
+    if (info) {
+        qDebug() << "Device id: " << p->rhi->driverInfo().deviceId;
+        qDebug() << "Device name: " << p->rhi->driverInfo().deviceName;
+        switch(p->rhi->driverInfo().deviceType) {
+            case QRhiDriverInfo::UnknownDevice:
+                qDebug() << "Device type: unknown device";
+                break;
+            case QRhiDriverInfo::IntegratedDevice:
+                qDebug() << "Device type: integrated device";
+                break;
+            case QRhiDriverInfo::DiscreteDevice:
+                qDebug() << "Device type: discrete device";
+                break;
+            case QRhiDriverInfo::ExternalDevice:
+                qDebug() << "Device type: external device";
+                break;
+            case QRhiDriverInfo::VirtualDevice:
+                qDebug() << "Device type: virtual device";
+                break;
+            case QRhiDriverInfo::CpuDevice:
+                qDebug() << "Device type: cpu device";
+                break;
+        }
+        qDebug() << "Vendor id: " << p->rhi->driverInfo().vendorId;
+        qDebug() << "Backend: " << p->rhi->backendName();
+        info = false;
+    }
     p->vertexbuffer.reset(p->rhi->newBuffer(
         QRhiBuffer::Immutable,
         QRhiBuffer::VertexBuffer,
         static_cast<quint32>(p->vertexdata.size() * sizeof(float)))
     );
     if (!p->vertexbuffer->create()) {
-        qWarning() << "error: could not create vertex buffer";
+        qWarning() << "warning: could not create vertex buffer";
     }
 
     p->mvpbuffer.reset(p->rhi->newBuffer(
@@ -151,7 +173,7 @@ rhi_widget::initialize(QRhiCommandBuffer* cb)
         sizeof(float) * 4 * 4) // size of 4x4 matrix
     );
     if (!p->mvpbuffer->create()) {
-        qWarning() << "error: could not create view buffer";
+        qWarning() << "warning: could not create view buffer";
     }
     
     p->texturebuffer.reset(p->rhi->newTexture(
@@ -160,7 +182,7 @@ rhi_widget::initialize(QRhiCommandBuffer* cb)
         1) // no multi-sampling
     );
     if (!p->texturebuffer->create()) {
-        qWarning() << "error: could not create texture buffer";
+        qWarning() << "warning: could not create texture buffer";
     }
     
     p->texturesampler.reset(p->rhi->newSampler(
@@ -171,7 +193,7 @@ rhi_widget::initialize(QRhiCommandBuffer* cb)
         QRhiSampler::ClampToEdge)
     );
     if (!p->texturesampler->create()) {
-        qWarning() << "error: could not create texture sampler";
+        qWarning() << "warning: could not create texture sampler";
     }
 
     p->shaderresourcebindings.reset(p->rhi->newShaderResourceBindings());
@@ -189,7 +211,7 @@ rhi_widget::initialize(QRhiCommandBuffer* cb)
         )
     });
     if (!p->shaderresourcebindings->create()) {
-        qWarning() << "error: failed to create shader resource bindings.";
+        qWarning() << "warning: failed to create shader resource bindings.";
         return;
     }
     

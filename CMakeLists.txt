@@ -1,6 +1,6 @@
-# Copyright 2022-present Contributors to the metalview project.
+# Copyright 2022-present Contributors to the flipbook project.
 # SPDX-License-Identifier: BSD-3-Clause
-# https://github.com/mikaelsundell/metalview
+# https://github.com/mikaelsundell/flipbook
 
 cmake_minimum_required (VERSION 3.27)
 set (project_name "flipbook")
@@ -16,7 +16,7 @@ set (CMAKE_AUTOUIC ON)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # app
-set (app_name "metalview")
+set (app_name "flipbook")
 
 # sources
 set (app_sources
@@ -25,6 +25,8 @@ set (app_sources
     flipbook.cpp
     qt_reader.h
     qt_reader.mm
+    qt_sidecar.h
+    qt_sidecar.cpp
     rhi_widget.h
     rhi_widget.cpp
 )
@@ -63,7 +65,7 @@ if (APPLE)
     add_definitions(-DMACOSX_BUNDLE_GUI_IDENTIFIER="${MACOSX_BUNDLE_GUI_IDENTIFIER}")
     add_definitions(-DMACOSX_BUNDLE_COPYRIGHT="${MACOSX_BUNDLE_COPYRIGHT}")
     add_definitions(-DMACOSX_BUNDLE_LONG_VERSION_STRING="${MACOSX_BUNDLE_LONG_VERSION_STRING}")
-    add_definitions(-DGITHUBURL="https://github.com/mikaelsundell/metalview")
+    add_definitions(-DGITHUBURL="https://github.com/mikaelsundell/flipbook")
     set_target_properties(${project_name} PROPERTIES
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${MACOSX_BUNDLE_GUI_IDENTIFIER}"
         MACOSX_BUNDLE_INFO_PLIST ${bundle_sources}
