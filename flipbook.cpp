@@ -3,7 +3,7 @@
 
 #include "flipbook.h"
 #include "rhi_widget.h"
-#include "qt_reader.h"
+#include "qt_stream.h"
 
 #include <QApplication>
 #include <QComboBox>
@@ -16,6 +16,7 @@
 #include <QShortcut>
 #include <QSlider>
 #include <QPointer>
+#include <QtGlobal>
 
 class flipbook_private : public QObject
 {
@@ -26,20 +27,38 @@ class flipbook_private : public QObject
     
     public Q_SLOTS:
         void open();
+        void seek(int frame);
         void play(bool checked);
+        void next();
+        void previous();
         void fullscreen(bool checked);
-        void timelineChanged(int value);
+    
+    Q_SIGNALS:
+        void startChanged(int frame);
+        void endChanged(int end);
+        void playChanged(bool checked);
+        void frameChanged(int frame);
+        void fullscreenChanged(bool checked);
 
     public:
-        qt_reader reader;
+        class State {
+            public:
+                bool play;
+                bool fullscreen;
+                int frame;
+        };
+        State state;
         QWidget* toolswidget;
         QWidget* timelinewidget;
         QWidget* renderwidget;
         QWidget* statuswidget;
         QDoubleSpinBox* fps;
+        QLabel* start;
+        QLabel* end;
         QSlider* timeline;
-        rhi_widget* rhiwidget;
         QVBoxLayout* layout;
+        rhi_widget* rhiwidget;
+        QScopedPointer<qt_stream> stream;
         QPointer<flipbook> window;
 };
 
@@ -54,23 +73,71 @@ flipbook_private::init()
     {
         QAction* open = new QAction("Open ...");
         open->setCheckable(true);
-        open->setShortcut(Qt::Key_O);
+        open->setShortcut(Qt::ControlModifier | Qt::Key_O);
         file->addAction(open);
         connect(open, &QAction::triggered, this, &flipbook_private::open);
     }
     QMenu* playback = window->menuBar()->addMenu("&Playback");
     {
+        QAction* usecache = new QAction("Use cache");
+        usecache->setCheckable(true);
+        playback->addAction(usecache);
+        playback->addSeparator();
+        
+        QAction* gotostart = new QAction("Start");
+        gotostart->setCheckable(true);
+        gotostart->setShortcut(Qt::Key_Down);
+        playback->addAction(gotostart);
+        
+        QAction* previous = new QAction("Previous");
+        previous->setCheckable(true);
+        previous->setShortcut(Qt::Key_Left);
+        playback->addAction(previous);
+        
         QAction* play = new QAction("Play");
         play->setCheckable(true);
         play->setShortcut(Qt::Key_Space);
         playback->addAction(play);
-        connect(play, &QAction::triggered, this, &flipbook_private::play);
-
+        
+        QAction* next = new QAction("Next");
+        next->setCheckable(true);
+        next->setShortcut(Qt::Key_Right);
+        playback->addAction(next);
+        
+        QAction* gotoend = new QAction("End");
+        gotoend->setShortcut(Qt::Key_Up);
+        playback->addAction(gotoend);
+        playback->addSeparator();
+        
+        QAction* gotoin = new QAction("Go to in");
+        gotoin->setCheckable(true);
+        gotoin->setShortcut(Qt::Key_I);
+        playback->addAction(gotoin);
+        
+        QAction* gotoout = new QAction("Go to out");
+        gotoout->setCheckable(true);
+        gotoout->setShortcut(Qt::Key_O);
+        playback->addAction(gotoout);
+        playback->addSeparator();
+        
+        QAction* loop = new QAction("Loop");
+        loop->setCheckable(true);
+        loop->setShortcut(Qt::Key_L);
+        playback->addAction(loop);
+        playback->addSeparator();
+    
+        playback->addSeparator();
         QAction* fullscreen = new QAction("Fullscreen");
         fullscreen->setCheckable(true);
         fullscreen->setShortcut(Qt::Key_F);
         playback->addAction(fullscreen);
+        
+        connect(previous, &QAction::triggered, this, &flipbook_private::previous);
+        connect(play, &QAction::triggered, this, &flipbook_private::play);
+        connect(next, &QAction::triggered, this, &flipbook_private::next);
         connect(fullscreen, &QAction::triggered, this, &flipbook_private::fullscreen);
+        connect(this, &flipbook_private::playChanged, play, &QAction::setChecked);
+        connect(this, &flipbook_private::fullscreenChanged, play, &QAction::setChecked);
     }
     QWidget* centralwidget = new QWidget(window.data());
     layout = new QVBoxLayout(centralwidget);
@@ -80,14 +147,18 @@ flipbook_private::init()
     {
         QHBoxLayout* toolslayout = new QHBoxLayout(toolswidget);
         QPushButton* open = new QPushButton("Open", toolswidget);
-        QPushButton* backward = new QPushButton("Backward", toolswidget);
+        QPushButton* start = new QPushButton("Start", toolswidget);
+        QPushButton* previous = new QPushButton("Previous", toolswidget);
         QPushButton* play = new QPushButton("Play", toolswidget);
         play->setCheckable(true);
-        QPushButton* forward = new QPushButton("Forward", toolswidget);
+        QPushButton* next = new QPushButton("Next", toolswidget);
+        QPushButton* end = new QPushButton("End", toolswidget);
         QPushButton* loop = new QPushButton("Loop", toolswidget);
         loop->setCheckable(true);
         QPushButton* in = new QPushButton("In", toolswidget);
         QPushButton* out = new QPushButton("Out", toolswidget);
+        QPushButton* sound = new QPushButton("Sound", toolswidget);
+        QLabel* time = new QLabel("00:00:00:00", toolswidget);
         QLabel* fpslabel = new QLabel("FPS", toolswidget);
         fps = new QDoubleSpinBox(toolswidget);
         fps->setMinimum(1.0);
@@ -102,12 +173,52 @@ flipbook_private::init()
         QPushButton* fullscreen = new QPushButton("Fullscreen", toolswidget);
         fullscreen->setCheckable(true);
         toolslayout->addWidget(open);
-        toolslayout->addWidget(backward);
+        {
+            QFrame* line = new QFrame();
+            line->setFrameShape(QFrame::VLine);
+            line->setFrameShadow(QFrame::Sunken);
+            toolslayout->addWidget(line);
+        }
+        toolslayout->addWidget(start);
+        toolslayout->addWidget(previous);
         toolslayout->addWidget(play);
-        toolslayout->addWidget(forward);
+        toolslayout->addWidget(next);
+        toolslayout->addWidget(end);
+        {
+            QFrame* line = new QFrame();
+            line->setFrameShape(QFrame::VLine);
+            line->setFrameShadow(QFrame::Sunken);
+            toolslayout->addWidget(line);
+        }
         toolslayout->addWidget(loop);
+        {
+            QFrame* line = new QFrame();
+            line->setFrameShape(QFrame::VLine);
+            line->setFrameShadow(QFrame::Sunken);
+            toolslayout->addWidget(line);
+        }
         toolslayout->addWidget(in);
         toolslayout->addWidget(out);
+        {
+            QFrame* line = new QFrame();
+            line->setFrameShape(QFrame::VLine);
+            line->setFrameShadow(QFrame::Sunken);
+            toolslayout->addWidget(line);
+        }
+        toolslayout->addWidget(sound);
+        {
+            QFrame* line = new QFrame();
+            line->setFrameShape(QFrame::VLine);
+            line->setFrameShadow(QFrame::Sunken);
+            toolslayout->addWidget(line);
+        }
+        toolslayout->addWidget(time);
+        {
+            QFrame* line = new QFrame();
+            line->setFrameShape(QFrame::VLine);
+            line->setFrameShadow(QFrame::Sunken);
+            toolslayout->addWidget(line);
+        }
         toolslayout->addWidget(fpslabel);
         toolslayout->addWidget(fps);
         toolslayout->addWidget(memlabel);
@@ -115,20 +226,32 @@ flipbook_private::init()
         toolslayout->addStretch(1);
         toolslayout->addWidget(fullscreen);
         layout->addWidget(toolswidget);
+        stream.reset(new qt_stream());
+        // connect
         connect(open, &QPushButton::pressed, this, &flipbook_private::open);
+        connect(previous, &QPushButton::pressed, this, &flipbook_private::previous);
         connect(play, &QPushButton::toggled, this, &flipbook_private::play);
+        connect(next, &QPushButton::pressed, this, &flipbook_private::next);
         connect(fullscreen, &QPushButton::toggled, this, &flipbook_private::fullscreen);
+        connect(this, &flipbook_private::playChanged, play, &QPushButton::setChecked);
+        connect(this, &flipbook_private::fullscreenChanged, fullscreen, &QPushButton::setChecked);
     }
     timelinewidget = new QWidget();
     {
         QHBoxLayout* timelinelayout = new QHBoxLayout(timelinewidget);
+        start = new QLabel("0", timelinewidget);
         timeline = new QSlider(Qt::Horizontal, timelinewidget);
         timeline->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         timeline->setEnabled(false);
+        end = new QLabel("0", timelinewidget);
+        timelinelayout->addWidget(start);
         timelinelayout->addWidget(timeline);
-        timelinelayout->setStretch(0, 1);
+        timelinelayout->addWidget(end);
+        timelinelayout->setStretch(1, 2);
         layout->addWidget(timelinewidget);
-        connect(timeline, &QSlider::valueChanged, this, &flipbook_private::timelineChanged);
+        
+        connect(timeline, &QSlider::valueChanged, this, &flipbook_private::seek);
+        connect(this, &flipbook_private::frameChanged, timeline, &QSlider::setValue);
     }
     renderwidget = new QWidget();
     {
@@ -178,19 +301,22 @@ flipbook_private::open()
          QDir::homePath(),
          tr("QuickTime Movies (*.mov);;All Files (*)")
     );
-
     if (!filename.isEmpty()) {
-        if (reader.open(filename)) {
-            QImage image = reader.frame(reader.start());
+        if (stream->open(filename)) {
+            stream->seek(stream->start());
+            QImage image = stream->fetch();
             if (!image.isNull()) {
                 window->setWindowTitle(QString("Flipbook: %1: %2")
                     .arg(QFileInfo(filename).fileName())
-                    .arg(reader.start())
+                    .arg(stream->start())
                 );
-                fps->setValue(reader.fps());
+                start->setText(QString::number(stream->start()));
+                end->setText(QString::number(stream->end()));
                 timeline->setEnabled(true);
-                timeline->setMinimum(reader.start());
-                timeline->setMaximum(reader.end());
+                timeline->setValue(stream->start());
+                timeline->setMinimum(stream->start());
+                timeline->setMaximum(stream->end());
+                fps->setValue(stream->fps());
                 rhiwidget->set_image(image);
             }
             else {
@@ -204,51 +330,80 @@ flipbook_private::open()
 }
 
 void
+flipbook_private::seek(int value)
+{
+    if (state.frame != value) {
+        if (stream->is_open()) {
+            stream->seek(value);
+            QImage image = stream->fetch();
+            if (!image.isNull()) {
+                window->setWindowTitle(QString("Flipbook: %1: %2")
+                                       .arg(QFileInfo(stream->filename()).fileName())
+                                       .arg(value)
+                                       );
+                rhiwidget->set_image(image);
+            }
+            else {
+                qWarning() << "warning: could not read frame " << value << " from quicktime file: " << stream->filename();
+            }
+            state.frame = value; // seek frame before fetch
+            frameChanged(value);
+        }
+        else {
+            qWarning() << "warning: no quicktime file is open for reading";
+        }
+    }
+}
+
+void
 flipbook_private::play(bool checked)
 {
-    qDebug() << "Play checked: " << checked;
+    if (state.play != checked) {
+        state.play = checked;
+        playChanged(checked);
+    }
 }
 
 void
 flipbook_private::fullscreen(bool checked)
 {
-    if (checked) {
-        for (int i = 0; i < layout->count(); ++i) {
-            QWidget* widget = layout->itemAt(i)->widget();
-            if (widget && widget != renderwidget) {
-                widget->hide();
+    if (state.fullscreen != checked) {
+        if (checked) {
+            for (int i = 0; i < layout->count(); ++i) {
+                QWidget* widget = layout->itemAt(i)->widget();
+                if (widget && widget != renderwidget) {
+                    widget->hide();
+                }
             }
-        }
-        window->showFullScreen();
-    } else {
-        for (int i = 0; i < layout->count(); ++i) {
-            QWidget* widget = layout->itemAt(i)->widget();
-            if (widget && widget != renderwidget) {
-                widget->show();
+            window->showFullScreen();
+        } else {
+            for (int i = 0; i < layout->count(); ++i) {
+                QWidget* widget = layout->itemAt(i)->widget();
+                if (widget && widget != renderwidget) {
+                    widget->show();
+                }
             }
+            window->showNormal();
         }
-        window->showNormal();
+        
+        state.fullscreen = checked;
+        fullscreenChanged(checked);
     }
 }
 
 void
-flipbook_private::timelineChanged(int value)
+flipbook_private::previous()
 {
-    if (reader.is_open()) {
-        QImage image = reader.frame(value);
-        if (!image.isNull()) {
-            window->setWindowTitle(QString("Flipbook: %1: %2")
-                .arg(QFileInfo(reader.filename()).fileName())
-                .arg(value)
-            );
-            rhiwidget->set_image(image);
-        }
-        else {
-            qWarning() << "warning: could not read frame " << value << " from quicktime file: " << reader.filename();
-        }
+    if (stream->is_open()) {
+        seek(qBound(state.frame - 1, stream->start(), stream->end()));
     }
-    else {
-        qWarning() << "warning: no quicktime file is open for reading";
+}
+
+void
+flipbook_private::next()
+{
+    if (stream->is_open()) {
+        seek(qBound(state.frame + 1, stream->start(), stream->end()));
     }
 }
 

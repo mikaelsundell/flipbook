@@ -8,22 +8,24 @@
 #include <QImage>
 #include <QScopedPointer>
 
-class qt_reader_private;
-class qt_reader
+class qt_stream_private;
+class qt_stream
 {
     public:
-        qt_reader();
-        virtual ~qt_reader();
+        qt_stream();
+        virtual ~qt_stream();
         bool is_open() const;
+        qt_sidecar sidecar();
         QString filename() const;
         bool open(const QString& filename);
         void close();
-        QImage frame(int frame);
-        qt_sidecar sidecar();
+        QImage fetch();
+        void seek(int frame);
+        int frame() const;
         int start() const;
         int end() const;
         float fps();
 
     private:
-        QScopedPointer<qt_reader_private> p;
+        QScopedPointer<qt_stream_private> p;
 };

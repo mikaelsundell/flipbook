@@ -249,7 +249,7 @@ rhi_widget::initialize(QRhiCommandBuffer* cb)
     const QSize size = renderTarget()->pixelSize();
     p->mvpdata = p->rhi->clipSpaceCorrMatrix();
     p->mvpdata.perspective(45.0f, size.width() / static_cast<float>(size.height()), 0.01f, 1000.0f);
-    p->mvpdata.translate(0, 0, -2);
+    p->mvpdata.translate(0, 0, -1);
 }
 
 

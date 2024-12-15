@@ -23,8 +23,8 @@ set (app_sources
     main.cpp
     flipbook.h
     flipbook.cpp
-    qt_reader.h
-    qt_reader.mm
+    qt_stream.h
+    qt_stream.mm
     qt_sidecar.h
     qt_sidecar.cpp
     rhi_widget.h

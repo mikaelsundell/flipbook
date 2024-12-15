@@ -24,10 +24,18 @@ Experimental:
 - Test stylesheet
 - Test playback loop modes
 - Test: sidecar json for metadata, filename + json
+- Test: Mouse cursor in white/ red and shuffle wheel cursor
+- Test: Optimize type conversions, Qt, AVFoundation and Rhi, speed up
 
 - Mac: Test device aspect ratio for displays
 - Mac: Publish as Github developer signed app in releases
 - Mac: Metal profiler in xcode
+
+In-development:
+
+- Separate UI and loading to *Changed methods if more than one widget (start, end etc), pissible use a timeline struct
+- End of stream generate invallid read output
+
 
 Completed
 
