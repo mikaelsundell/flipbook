@@ -7,13 +7,13 @@
 #include <rhi/qrhi.h>
 #include <QScopedPointer>
 
-class rhi_widget_private;
-class rhi_widget : public QRhiWidget
+class RhiWidgetPrivate;
+class RhiWidget : public QRhiWidget
 {
     Q_OBJECT
     public:
-        rhi_widget(QWidget* parent = nullptr);
-        virtual ~rhi_widget();
+        RhiWidget(QWidget* parent = nullptr);
+        virtual ~RhiWidget();
         void set_image(const QImage& image);
     
     protected:
@@ -21,5 +21,5 @@ class rhi_widget : public QRhiWidget
         void render(QRhiCommandBuffer* cb) override;
 
     private:
-        QScopedPointer<rhi_widget_private> p;
+        QScopedPointer<RhiWidgetPrivate> p;
 };

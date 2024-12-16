@@ -12,7 +12,7 @@ int
 main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
-    flipbook* window = new flipbook();
-    window->show();
+    Flipbook* flipbook = new Flipbook();
+    flipbook->show();
     return app.exec();
 }

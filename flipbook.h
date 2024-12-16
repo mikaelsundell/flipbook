@@ -6,14 +6,14 @@
 #include <QMainWindow>
 #include <QScopedPointer>
 
-class flipbook_private;
-class flipbook : public QMainWindow
+class FlipbookPrivate;
+class Flipbook : public QMainWindow
 {
     Q_OBJECT
     public:
-        flipbook(QWidget* parent = nullptr);
-        virtual ~flipbook();
+        Flipbook(QWidget* parent = nullptr);
+        virtual ~Flipbook();
 
     private:
-        QScopedPointer<flipbook_private> p;
+        QScopedPointer<FlipbookPrivate> p;
 };

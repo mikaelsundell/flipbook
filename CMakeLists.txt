@@ -8,7 +8,7 @@ set (project_name "flipbook")
 project (${project_name})
 
 # packages
-set (qt6_modules Core PrintSupport Gui Widgets)
+set (qt6_modules Core Concurrent Gui Widgets)
 find_package (Qt6 COMPONENTS ${qt6_modules} CONFIG REQUIRED)
 set (CMAKE_AUTOMOC ON)
 set (CMAKE_AUTORCC ON)
@@ -20,15 +20,17 @@ set (app_name "flipbook")
 
 # sources
 set (app_sources
-    main.cpp
+    avmetadata.h
+    avmetadata.cpp
+    avsidecar.h
+    avsidecar.cpp
+    avstream.h
+    avstream.mm
     flipbook.h
     flipbook.cpp
-    qt_stream.h
-    qt_stream.mm
-    qt_sidecar.h
-    qt_sidecar.cpp
-    rhi_widget.h
-    rhi_widget.cpp
+    main.cpp
+    rhiwidget.h
+    rhiwidget.cpp
 )
 
 # resources
@@ -71,7 +73,7 @@ if (APPLE)
         MACOSX_BUNDLE_INFO_PLIST ${bundle_sources}
     )
     target_link_libraries (${project_name} 
-        Qt6::Core Qt6::PrintSupport Qt6::Gui Qt6::GuiPrivate Qt6::Widgets 
+        Qt6::Core Qt6::Concurrent Qt6::Gui Qt6::GuiPrivate Qt6::Widgets 
         "-framework CoreFoundation"
         "-framework AVFoundation"
         "-framework CoreMedia"

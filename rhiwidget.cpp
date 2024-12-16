@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2022 - present Mikael Sundell.
 
-#include "rhi_widget.h"
+#include "rhiwidget.h"
 
 #include <QApplication>
 #include <QFile>
 #include <QPointer>
 
-class rhi_widget_private : public QObject
+class RhiWidgetPrivate : public QObject
 {
     Q_OBJECT
     public:
-        rhi_widget_private();
+        RhiWidgetPrivate();
         void init();
         void render();
         void reset(QRhiRenderTarget* target);
@@ -30,32 +30,32 @@ class rhi_widget_private : public QObject
         QImage texturedata;
         QVector<float> vertexdata;
         QMatrix4x4 mvpdata;
-        QPointer<rhi_widget> widget;
+        QPointer<RhiWidget> widget;
 };
 
-rhi_widget_private::rhi_widget_private()
+RhiWidgetPrivate::RhiWidgetPrivate()
 {
 }
 
 void
-rhi_widget_private::init()
+RhiWidgetPrivate::init()
 {
     set_image(checkerboard(1920, 1080, 32)); // checker HD image
 }
 
 void
-rhi_widget_private::render()
+RhiWidgetPrivate::render()
 {
 }
 
 void
-rhi_widget_private::reset(QRhiRenderTarget* target)
+RhiWidgetPrivate::reset(QRhiRenderTarget* target)
 {
     
 }
 
 QShader
-rhi_widget_private::shader(const QString& name)
+RhiWidgetPrivate::shader(const QString& name)
 {
     QString path = QCoreApplication::applicationDirPath() + "/../Resources/" + name;
     QFile file(path);
@@ -68,7 +68,7 @@ rhi_widget_private::shader(const QString& name)
 }
 
 void
-rhi_widget_private::set_image(const QImage& image)
+RhiWidgetPrivate::set_image(const QImage& image)
 {
     rhi = nullptr;
     texturedata = image;
@@ -86,7 +86,7 @@ rhi_widget_private::set_image(const QImage& image)
 }
 
 QImage
-rhi_widget_private::checkerboard(int width, int height, int size)
+RhiWidgetPrivate::checkerboard(int width, int height, int size)
 {
     QImage image(width, height, QImage::Format_RGBA8888);
     QColor black(0, 0, 0, 255);
@@ -102,28 +102,28 @@ rhi_widget_private::checkerboard(int width, int height, int size)
     return image;
 }
 
-#include "rhi_widget.moc"
+#include "rhiwidget.moc"
 
-rhi_widget::rhi_widget(QWidget* parent)
+RhiWidget::RhiWidget(QWidget* parent)
 : QRhiWidget(parent)
-, p(new rhi_widget_private())
+, p(new RhiWidgetPrivate())
 {
     p->widget = this;
     p->init();
 }
 
-rhi_widget::~rhi_widget()
+RhiWidget::~RhiWidget()
 {
 }
 
 void
-rhi_widget::set_image(const QImage& image)
+RhiWidget::set_image(const QImage& image)
 {
     p->set_image(image);
 }
 
 void
-rhi_widget::initialize(QRhiCommandBuffer* cb)
+RhiWidget::initialize(QRhiCommandBuffer* cb)
 {
     if (p->rhi != rhi()) {
         p->pipeline.reset();
@@ -254,7 +254,7 @@ rhi_widget::initialize(QRhiCommandBuffer* cb)
 
 
 void
-rhi_widget::render(QRhiCommandBuffer* cb)
+RhiWidget::render(QRhiCommandBuffer* cb)
 {
     if (p->rhi != rhi()) {
         initialize(cb);

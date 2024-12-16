@@ -5,13 +5,13 @@
 
 #include <QScopedPointer>
 
-class qt_sidecar_private;
-class qt_sidecar
+class AVSidecarPrivate;
+class AVSidecar
 {
     public:
-        qt_sidecar();
-        virtual ~qt_sidecar();
-
+        AVSidecar();
+        virtual ~AVSidecar();
+        
     private:
-        QScopedPointer<qt_sidecar_private> p;
+        QScopedPointer<AVSidecarPrivate> p;
 };
