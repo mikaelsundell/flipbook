@@ -6,25 +6,33 @@
 class AVSidecarPrivate
 {
     public:
-        AVSidecarPrivate();
-        void init();
+        QAtomicInt ref;
 };
-
-AVSidecarPrivate::AVSidecarPrivate()
-{
-}
-
-void
-AVSidecarPrivate::init()
-{
-}
 
 AVSidecar::AVSidecar()
 : p(new AVSidecarPrivate())
 {
-    p->init();
+}
+
+AVSidecar::AVSidecar(const AVSidecar& other)
+: p(other.p)
+{
 }
 
 AVSidecar::~AVSidecar()
 {
+}
+
+void
+AVSidecar::clear()
+{
+}
+
+AVSidecar&
+AVSidecar::operator=(const AVSidecar& other)
+{
+    if (this != &other) {
+        p = other.p;
+    }
+    return *this;
 }

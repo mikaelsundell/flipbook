@@ -28,6 +28,9 @@ Experimental:
 - Test: Optimize type conversions, Qt, AVFoundation and Rhi, speed up
 - Test: Modify cursor, white/ red-like when using app
 - Test: Test audio device output, Qt multimedia classes?
+- Test: Store bookmarks and cut-n-paste timeline positions
+- Test: Color space of video tracks
+- Test: Add in braw, ffmpeg AVStream interfaces
 
 - Mac: Test device aspect ratio for displays
 - Mac: Publish as Github developer signed app in releases
@@ -36,9 +39,11 @@ Experimental:
 In-development:
 
 - Separate UI and loading to *Changed methods if more than one widget (start, end etc), pissible use a timeline struct
-- End of stream generate invallid read output
+- End of stream generate invalid read output
 - /Qt6.8/Docs/Qt-6.8.1/qtgui/qrhi.html
   - see offline example of rendering
 - Test sidecar metadata
   - top and bottom metadata selection, write in order of appearance
     - like camera data in top and show info in bottom
+- audio video icons
+  https://www.flaticon.com/packs/audio-video-2

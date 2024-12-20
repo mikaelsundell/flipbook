@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <QScopedPointer>
+#include <QExplicitlySharedDataPointer>
 
 class AVSidecarPrivate;
 class AVSidecar
@@ -11,7 +11,11 @@ class AVSidecar
     public:
         AVSidecar();
         virtual ~AVSidecar();
-        
+        AVSidecar(const AVSidecar& other);
+        void clear();
+    
+        AVSidecar& operator=(const AVSidecar& other);
+    
     private:
-        QScopedPointer<AVSidecarPrivate> p;
+        QExplicitlySharedDataPointer<AVSidecarPrivate> p;
 };

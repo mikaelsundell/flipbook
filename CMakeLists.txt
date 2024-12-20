@@ -24,13 +24,23 @@ set (app_sources
     avmetadata.cpp
     avsidecar.h
     avsidecar.cpp
+    avsmptetime.h
+    avsmptetime.cpp
     avstream.h
     avstream.mm
+    avtime.h
+    avtime.cpp
+    avtimerange.h
+    avtimerange.cpp
     flipbook.h
     flipbook.cpp
     main.cpp
+    mac.h
+    mac.mm
     rhiwidget.h
     rhiwidget.cpp
+    timeline.h
+    timeline.cpp
 )
 
 # resources

@@ -3,8 +3,7 @@
 
 #pragma once
 
-#include <QImage>
-#include <QScopedPointer>
+#include <QExplicitlySharedDataPointer>
 
 class AVMetadataPrivate;
 class AVMetadata
@@ -12,7 +11,15 @@ class AVMetadata
     public:
         AVMetadata();
         virtual ~AVMetadata();
-        
+        AVMetadata(const AVMetadata& other);
+        void clear();
+        bool contains_key(const QString& key) const;
+        bool remove_key(const QString& key);
+        QList<QPair<QString, QString>> data() const;
+        void add_pair(const QString& key, const QString& value);
+    
+        AVMetadata& operator=(const AVMetadata& other);
+
     private:
-        QScopedPointer<AVMetadataPrivate> p;
+        QExplicitlySharedDataPointer<AVMetadataPrivate> p;
 };
