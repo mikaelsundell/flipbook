@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2022 - present Mikael Sundell.
 
-#include "avstream.h"
+#include "avreader.h"
 
 #include <AVFoundation/AVFoundation.h>
 #include <CoreMedia/CoreMedia.h>
@@ -13,18 +13,18 @@
 
 #include <QDebug>
 
-class AVStreamPrivate
+class AVReaderPrivate
 {
     public:
-        AVStreamPrivate();
-        ~AVStreamPrivate();
+        AVReaderPrivate();
+        ~AVReaderPrivate();
         void ui();
         void init();
         void open();
         void close();
         void read();
         void seek(CMTime time);
-        void play();
+        void stream();
     
     public:
         void debug_time(QImage& image, CMTime time) { // todo: temporary
@@ -36,8 +36,8 @@ class AVStreamPrivate
             QFontMetrics fm(font);
             int textWidth = fm.horizontalAdvance(text);
             int textHeight = fm.height();
-            QPoint center((image.width() - textWidth) / 2, (image.height() + textHeight) / 2);
-            painter.drawText(center, text);
+            QPoint position((image.width() - textWidth) / 2, image.height() - textHeight - 120);
+            painter.drawText(position, text);
             painter.end();
         }
         // https://developer.apple.com/library/archive/technotes/tn2310/_index.html
@@ -60,36 +60,36 @@ class AVStreamPrivate
         CMTimeRange timerange;
         CMTime timestamp;
         qreal fps = 0.0;
-        std::atomic<bool> playing;
+        std::atomic<bool> streaming;
         AVMetadata metadata;
         AVSidecar sidecar;
         QString errormessage;
-        AVStream::Error error;
-        QPointer<AVStream> object;
+        AVReader::Error error;
+        QPointer<AVReader> object;
 };
 
-AVStreamPrivate::AVStreamPrivate()
-: playing(false)
+AVReaderPrivate::AVReaderPrivate()
+: streaming(false)
 {
 }
 
-AVStreamPrivate::~AVStreamPrivate()
-{
-}
-
-void
-AVStreamPrivate::init()
+AVReaderPrivate::~AVReaderPrivate()
 {
 }
 
 void
-AVStreamPrivate::open()
+AVReaderPrivate::init()
+{
+}
+
+void
+AVReaderPrivate::open()
 {
     close();
     NSURL* url = [NSURL fileURLWithPath:filename.toNSString()];
     asset = [AVAsset assetWithURL:url];
     if (!asset) {
-        error = AVStream::FILE_ERROR;
+        error = AVReader::FILE_ERROR;
         errormessage = QString("unable to load asset from file: %1").arg(filename);
         qWarning() << "warning: " << errormessage;
         return false;
@@ -97,7 +97,7 @@ AVStreamPrivate::open()
     NSError* averror = nil;
     reader = [[AVAssetReader alloc] initWithAsset:asset error:&averror];
     if (!reader) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = QString("unable to create AVAssetReader for video: %1").arg(QString::fromNSString(averror.localizedDescription));
         qWarning() << "warning: " << errormessage;
         return false;
@@ -138,7 +138,7 @@ AVStreamPrivate::open()
     }
     AVAssetTrack* videotrack = [[asset tracksWithMediaType:AVMediaTypeVideo] firstObject];
     if (!videotrack) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = QString("no video track found in file: %1").arg(filename);
         qWarning() << "warning: " << errormessage;
         return false;
@@ -150,7 +150,7 @@ AVStreamPrivate::open()
     if (timecodetrack) {
         AVAssetReader* timecodereader = [[AVAssetReader alloc] initWithAsset:asset error:&averror];
         if (!reader) {
-            error = AVStream::API_ERROR;
+            error = AVReader::API_ERROR;
             errormessage = QString("unable to create AVAssetReader for timecode: %1").arg(QString::fromNSString(averror.localizedDescription));
             qWarning() << "warning: " << errormessage;
             return false;
@@ -185,7 +185,7 @@ AVStreamPrivate::open()
                         }
                     }
                     else {
-                        error = AVStream::API_ERROR;
+                        error = AVReader::API_ERROR;
                         errormessage = QString("unable to get data from block buffer for timecode");
                         qWarning() << "warning: " << errormessage;
                         return false;
@@ -197,7 +197,7 @@ AVStreamPrivate::open()
             }
         }
         else {
-            error = AVStream::API_ERROR;
+            error = AVReader::API_ERROR;
             errormessage = QString("unable to read sample buffer at for timecode");
             qWarning() << "warning: " << errormessage;
             return false;
@@ -209,7 +209,7 @@ AVStreamPrivate::open()
             (NSString*)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA)
     }];
     if (!videooutput) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = "unable to create AVAssetReaderTrackOutput";
         qWarning() << "warning: " << errormessage;
         return false;
@@ -220,7 +220,7 @@ AVStreamPrivate::open()
 }
 
 void
-AVStreamPrivate::close()
+AVReaderPrivate::close()
 {
     if (reader) {
         [reader cancelReading];
@@ -232,29 +232,29 @@ AVStreamPrivate::close()
     timecode = CVSMPTETime();
     timerange = CMTimeRange();
     timestamp = CMTime();
-    playing = false;
+    streaming = false;
     fps = 0.0f;
     metadata = AVMetadata();
     sidecar = AVSidecar();
-    error = AVStream::NO_ERROR;
+    error = AVReader::NO_ERROR;
     errormessage = QString();
 }
 
 void
-AVStreamPrivate::read()
+AVReaderPrivate::read()
 {
     Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
     
     CMSampleBufferRef samplebuffer = [videooutput copyNextSampleBuffer];
     if (!samplebuffer) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = "unable to read sample buffer at current frame";
         qWarning() << "warning: " << errormessage;
     }
     CVImageBufferRef imagebuffer = CMSampleBufferGetImageBuffer(samplebuffer);
     if (!imagebuffer) {
         CFRelease(samplebuffer);
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = "CMSampleBuffer has no image buffer";
         qWarning() << "warning: " << errormessage;
         return;
@@ -274,11 +274,11 @@ AVStreamPrivate::read()
     CFRelease(samplebuffer);
     debug_time(image, timestamp); // todo: temporary
     object->time_changed(to_time(timestamp));
-    object->image_changed(image.copy());
+    object->video_changed(image.copy());
 }
 
 void
-AVStreamPrivate::seek(CMTime time)
+AVReaderPrivate::seek(CMTime time)
 {
     Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
     if (reader) {
@@ -288,14 +288,14 @@ AVStreamPrivate::seek(CMTime time)
     NSError* averror = nil;
     reader = [[AVAssetReader alloc] initWithAsset:asset error:&averror];
     if (!reader) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = QString("failed to recreate AVAssetReader: %1").arg(QString::fromNSString(averror.localizedDescription));
         qWarning() << "warning: " << errormessage;
         return;
     }
     AVAssetTrack* track = [[asset tracksWithMediaType:AVMediaTypeVideo] firstObject];
     if (!track) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = "no video track found in asset";
         qWarning() << "warning: " << errormessage;
         return;
@@ -306,7 +306,7 @@ AVStreamPrivate::seek(CMTime time)
             (NSString*)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA)
     }];
     if (!videooutput) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = "unable to create AVAssetReaderTrackOutput";
         qWarning() << "warning: " << errormessage;
         return;
@@ -316,7 +316,7 @@ AVStreamPrivate::seek(CMTime time)
     CMTime duration = CMTimeSubtract(end, time);
     reader.timeRange = CMTimeRangeMake(time, duration);
     if (![reader startReading]) {
-        error = AVStream::API_ERROR;
+        error = AVReader::API_ERROR;
         errormessage = "failed to start reading after seeking";
         qWarning() << "warning: " << errormessage;
         return;
@@ -324,26 +324,37 @@ AVStreamPrivate::seek(CMTime time)
 }
 
 void
-AVStreamPrivate::play()
+AVReaderPrivate::stream()
 {
-    playing = true;
-    qint64 frame = ticks_per_frame(timerange, fps);
+    streaming = true;
+    qint64 ticks = ticks_per_frame(timerange, fps); // match the samples in video
     for (CMTime current = timestamp;
          CMTimeCompare(current, timerange.duration) < 0;
-         current = CMTimeAdd(current, CMTimeMake(frame, timerange.duration.timescale))) {
-        if (playing) {
+         current = CMTimeAdd(current, CMTimeMake(ticks, timerange.duration.timescale))) {
+        if (streaming) {
+            if (CMTimeCompare(CMTimeAdd(current, CMTimeMake(ticks, timerange.duration.timescale)), timerange.duration) >= 0) {
+                timestamp = timerange.duration;
+                object->time_changed(to_time(timestamp));
+                break; // last frame until duration
+            }
+            qDebug() << "reading stream";
+            qDebug() << "- ticks: " << ticks;
+            qDebug() << "- current: " << current.value;
+            qDebug() << "- duration: " << timerange.duration.value;
+            
             read();
+            
             // todo: drop frames, time elapsed after read() from gui
             QThread::msleep((1 / fps) * 1000);
         } else {
-            return;
+            break;
         }
     }
     object->finished();
 }
 
 int64_t
-AVStreamPrivate::to_frame(CVSMPTETime timecode, uint32_t framequanta, uint32_t flags)
+AVReaderPrivate::to_frame(CVSMPTETime timecode, uint32_t framequanta, uint32_t flags)
 {
     int64_t framenumber = 0;
     framenumber = timecode.frames;
@@ -378,7 +389,7 @@ AVStreamPrivate::to_frame(CVSMPTETime timecode, uint32_t framequanta, uint32_t f
 }
 
 CVSMPTETime
-AVStreamPrivate::to_timecode(int64_t frame, uint32_t framequanta, uint32_t flags)
+AVReaderPrivate::to_timecode(int64_t frame, uint32_t framequanta, uint32_t flags)
 {
     CVSMPTETime timecode = {0};
     short fps = framequanta;
@@ -423,7 +434,7 @@ AVStreamPrivate::to_timecode(int64_t frame, uint32_t framequanta, uint32_t flags
 }
 
 AVTime
-AVStreamPrivate::to_time(CMTime other) {
+AVReaderPrivate::to_time(CMTime other) {
     AVTime time;
     if (CMTIME_IS_VALID(other)) {
         time.set_ticks(other.value);
@@ -433,12 +444,12 @@ AVStreamPrivate::to_time(CMTime other) {
 }
 
 CMTime
-AVStreamPrivate::to_time(AVTime other) {
+AVReaderPrivate::to_time(AVTime other) {
     return CMTimeMakeWithEpoch(other.ticks(), other.timescale(), 0); // default epoch and flags
 }
 
 AVTimeRange
-AVStreamPrivate::to_timerange(CMTimeRange timerange) {
+AVReaderPrivate::to_timerange(CMTimeRange timerange) {
     AVTimeRange range;
     if (CMTIMERANGE_IS_VALID(timerange)) {
         range.set_start(to_time(timerange.start));
@@ -449,7 +460,7 @@ AVStreamPrivate::to_timerange(CMTimeRange timerange) {
 }
 
 AVSmpteTime
-AVStreamPrivate::to_timecode(CVSMPTETime other) {
+AVReaderPrivate::to_timecode(CVSMPTETime other) {
     AVSmpteTime timecode;
     timecode.set_counter(other.counter);
     timecode.set_type(other.type);
@@ -463,30 +474,30 @@ AVStreamPrivate::to_timecode(CVSMPTETime other) {
 }
 
 bool
-AVStreamPrivate::compare_time(CMTime time, AVTime other) {
+AVReaderPrivate::compare_time(CMTime time, AVTime other) {
     return to_time(time) == other;
 }
 
 bool
-AVStreamPrivate::compare_timecode(CVSMPTETime timecode, AVSmpteTime other) {
+AVReaderPrivate::compare_timecode(CVSMPTETime timecode, AVSmpteTime other) {
     return to_timecode(timecode) == other;
 }
 
 int64_t
-AVStreamPrivate::ticks_per_frame(CMTimeRange range, qreal fps)
+AVReaderPrivate::ticks_per_frame(CMTimeRange range, qreal fps)
 {
     int32_t timescale = timerange.duration.timescale;
     return static_cast<int64_t>(std::round(static_cast<qreal>(timescale) / fps));
 }
 
 CMTime
-AVStreamPrivate::scale_time(CMTime other, int32_t scale)
+AVReaderPrivate::scale_time(CMTime other, int32_t scale)
 {
     return CMTimeConvertScale(other, scale, kCMTimeRoundingMethod_Default);
 }
 
 CMTimeRange
-AVStreamPrivate::scale_timerange(CMTimeRange other, int32_t scale)
+AVReaderPrivate::scale_timerange(CMTimeRange other, int32_t scale)
 {
     CMTimeRange range{ other.start, other.duration };
     range.start = scale_time(range.start, scale);
@@ -494,122 +505,122 @@ AVStreamPrivate::scale_timerange(CMTimeRange other, int32_t scale)
     return range;
 }
 
-AVStream::AVStream()
-: p(new AVStreamPrivate())
+AVReader::AVReader()
+: p(new AVReaderPrivate())
 {
     p->init();
     p->object = this;
 }
 
-AVStream::~AVStream()
+AVReader::~AVReader()
 {
 }
 
 void
-AVStream::open(const QString& filename)
+AVReader::open(const QString& filename)
 {
     p->filename = filename;
     p->open();
 }
 
 void
-AVStream::read()
+AVReader::read()
 {
     p->read();
 }
 
 void
-AVStream::close()
+AVReader::close()
 {
     p->close();
 }
 
 bool
-AVStream::is_open() const
+AVReader::is_open() const
 {
-    return (p->reader && p->error == AVStream::NO_ERROR);
+    return (p->reader && p->error == AVReader::NO_ERROR);
 }
 
 bool
-AVStream::is_closed() const
+AVReader::is_closed() const
 {
     return !p->reader;
 }
 
 bool
-AVStream::is_playing() const
+AVReader::is_streaming() const
 {
-    return p->playing;
+    return p->streaming;
 }
 
 const QString&
-AVStream::filename() const
+AVReader::filename() const
 {
     return p->filename;
 }
 
 AVTime
-AVStream::time() const
+AVReader::time() const
 {
     return p->to_time(p->timestamp);
 }
 
 AVTimeRange
-AVStream::range() const
+AVReader::range() const
 {
     return p->to_timerange(p->timerange);
 }
 
 qreal
-AVStream::fps() const
+AVReader::fps() const
 {
     return p->fps;
 }
 
 AVSmpteTime
-AVStream::timecode() const
+AVReader::timecode() const
 {
     return p->to_timecode(p->timecode);
 }
 
-AVStream::Error
-AVStream::error() const
+AVReader::Error
+AVReader::error() const
 {
     return p->error;
 }
 
 QString
-AVStream::error_message() const
+AVReader::error_message() const
 {
     return p->errormessage;
 }
 
 AVMetadata
-AVStream::metadata()
+AVReader::metadata()
 {
     return p->metadata;
 }
 
 AVSidecar
-AVStream::sidecar()
+AVReader::sidecar()
 {
     return p->sidecar;
 }
 
 void
-AVStream::seek(AVTime time)
+AVReader::seek(AVTime time)
 {
     p->seek(p->to_time(time));
 }
 
 void
-AVStream::play()
+AVReader::stream()
 {
-    p->play();
+    p->stream();
 }
 
 void
-AVStream::stop()
+AVReader::abort()
 {
-    p->playing = false;
+    p->streaming = false;
 }

@@ -13,22 +13,22 @@
 #include <QObject>
 #include <QScopedPointer>
 
-class AVStreamPrivate;
-class AVStream : public QObject {
+class AVReaderPrivate;
+class AVReader : public QObject {
     Q_OBJECT
     public:
         enum Error { NO_ERROR, FILE_ERROR, API_ERROR, OTHER_ERROR };
         Q_ENUM(Error)
 
     public:
-        AVStream();
-        virtual ~AVStream();
+        AVReader();
+        virtual ~AVReader();
         void open(const QString& filename);
         void read();
         void close();
         bool is_open() const;
         bool is_closed() const;
-        bool is_playing() const;
+        bool is_streaming() const;
         const QString& filename() const;
         AVTimeRange range() const;
         AVTime time() const;
@@ -36,22 +36,22 @@ class AVStream : public QObject {
         AVSmpteTime timecode() const;
         AVMetadata metadata();
         AVSidecar sidecar();
-        AVStream::Error error() const;
+        AVReader::Error error() const;
         QString error_message() const;
     
     public Q_SLOTS:
         void seek(AVTime time);
-        void play();
-        void stop();
+        void stream();
+        void abort();
 
     Q_SIGNALS:
         void time_changed(const AVTime& time);
         void range_changed(const AVTimeRange& timerange);
-        void image_changed(const QImage& image);
+        void video_changed(const QImage& image);
         void opened(const QString& filename);
         void started();
         void finished();
 
     private:
-        QScopedPointer<AVStreamPrivate> p;
+        QScopedPointer<AVReaderPrivate> p;
 };

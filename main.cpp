@@ -5,8 +5,6 @@
 
 #include <QApplication>
 
-#include <iostream>
-
 // main
 int
 main(int argc, char* argv[])

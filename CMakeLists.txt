@@ -26,8 +26,8 @@ set (app_sources
     avsidecar.cpp
     avsmptetime.h
     avsmptetime.cpp
-    avstream.h
-    avstream.mm
+    avreader.h
+    avreader.mm
     avtime.h
     avtime.cpp
     avtimerange.h
@@ -41,6 +41,7 @@ set (app_sources
     rhiwidget.cpp
     timeline.h
     timeline.cpp
+    flipbook.ui
 )
 
 # resources

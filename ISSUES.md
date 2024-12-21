@@ -1,7 +1,7 @@
 Ongoing:
 
-- Improve concurrent stream reading
-- Improve signals from stream for set_* methods
+- Improve concurrent reader reading
+- Improve signals from reader for set_* methods
 - Improve coding format and .clang-formats
 - Improve set_rate
 - Fix issues with AV* API's when scubbing quickly
@@ -29,8 +29,9 @@ Experimental:
 - Test: Modify cursor, white/ red-like when using app
 - Test: Test audio device output, Qt multimedia classes?
 - Test: Store bookmarks and cut-n-paste timeline positions
-- Test: Color space of video tracks
-- Test: Add in braw, ffmpeg AVStream interfaces
+- Test: Color space of video tracks, ocio conversion
+- Test: Add in braw, ffmpeg AVReader interfaces
+- Test: Get actual film name not just filename
 
 - Mac: Test device aspect ratio for displays
 - Mac: Publish as Github developer signed app in releases
@@ -39,7 +40,7 @@ Experimental:
 In-development:
 
 - Separate UI and loading to *Changed methods if more than one widget (start, end etc), pissible use a timeline struct
-- End of stream generate invalid read output
+- End of reader generate invalid read output
 - /Qt6.8/Docs/Qt-6.8.1/qtgui/qrhi.html
   - see offline example of rendering
 - Test sidecar metadata

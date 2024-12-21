@@ -6,7 +6,7 @@ Flipbook
 Introduction
 ------------
 
-This project is a purely experimental exploration of Qt's accelerated 3D API and its shader abstraction layer, applied to QuickTime video streaming. It serves as a sandbox for testing concepts, experimenting with real-time rendering and integration of QuickTime with Qt frameworks.
+This project is a purely experimental exploration of Qt's accelerated 3D API and its shader abstraction layer, applied to QuickTime video readering. It serves as a sandbox for testing concepts, experimenting with real-time rendering and integration of QuickTime with Qt frameworks.
 
 References
 -------------
