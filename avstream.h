@@ -28,10 +28,11 @@ class AVStream : public QObject {
         void close();
         bool is_open() const;
         bool is_closed() const;
+        bool is_playing() const;
         const QString& filename() const;
         AVTimeRange range() const;
         AVTime time() const;
-        float rate() const;
+        qreal fps() const;
         AVSmpteTime timecode() const;
         AVMetadata metadata();
         AVSidecar sidecar();
@@ -44,8 +45,8 @@ class AVStream : public QObject {
         void stop();
 
     Q_SIGNALS:
-        void time_changed(AVTime frame);
-        void range_changed(AVTimeRange frame);
+        void time_changed(const AVTime& time);
+        void range_changed(const AVTimeRange& timerange);
         void image_changed(const QImage& image);
         void opened(const QString& filename);
         void started();

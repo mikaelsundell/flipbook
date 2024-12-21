@@ -45,7 +45,7 @@ TimelinePrivate::init()
 int
 TimelinePrivate::to_x(qint64 tick)
 {
-    qreal ratio = static_cast<qreal>(tick) / range.duration().time();
+    qreal ratio = static_cast<qreal>(tick) / range.duration().ticks();
     return margin + ratio * (widget->width() - 2 * margin);
 }
 
@@ -54,7 +54,7 @@ TimelinePrivate::to_time(int x)
 {
     x = qBound(margin, x, widget->width() - margin);
     qreal ratio = static_cast<qreal>(x - margin) / (widget->width() - 2 * margin);
-    return static_cast<qint64>(ratio * (range.duration().time() - 1));
+    return static_cast<qint64>(ratio * (range.duration().ticks() - 1));
 }
 
 QPixmap
@@ -77,9 +77,9 @@ TimelinePrivate::paint()
     font.setPointSizeF(font.pointSizeF() * 0.8f);
     p.setFont(font);
     if (range.valid()) {
-        qint64 pos = time.time();
-        qint64 start = range.start().time();
-        qint64 duration = range.duration().time();
+        qint64 pos = time.ticks();
+        qint64 start = range.start().ticks();
+        qint64 duration = range.duration().ticks();
         int interval = qMax(1, int(qRound(duration * 0.1)) / 10 * 10);
         p.setPen(QPen(Qt::white, 1));
         for (qint64 tick = start; tick <= duration; tick += interval) {
@@ -191,7 +191,7 @@ Timeline::mousePressEvent(QMouseEvent* event)
     if (event->button() == Qt::LeftButton) {
         setCursor(Qt::BlankCursor);
         qint64 pos = p->to_time(event->pos().x());
-        p->time.set_time(pos);
+        p->time.set_ticks(pos);
         p->pressed = true;
         slider_pressed();
         update();
@@ -203,7 +203,7 @@ Timeline::mouseMoveEvent(QMouseEvent* event)
 {
     if (p->pressed) {
         qint64 pos = p->to_time(event->pos().x());
-        p->time.set_time(pos);
+        p->time.set_ticks (pos);
         time_changed(p->time);
         update();
     }

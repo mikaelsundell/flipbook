@@ -3,6 +3,8 @@
 
 #include "avtimerange.h"
 
+#include <QtGlobal>
+
 class AVTimeRangePrivate
 {
     public:
@@ -19,6 +21,7 @@ AVTimeRange::AVTimeRange()
 AVTimeRange::AVTimeRange(AVTime start, AVTime duration)
 : p(new AVTimeRangePrivate())
 {
+    Q_ASSERT(start.timescale() == duration.timescale());
     p->start = start;
     p->duration = duration;
 }
@@ -47,6 +50,13 @@ AVTimeRange::end() const {
     return p->start + p->duration;
 }
 
+AVTime
+AVTimeRange::bound(AVTime time)
+{
+    Q_ASSERT(time.timescale() == start().timescale());
+    return AVTime(qBound(start().ticks(), time.ticks(), end().ticks()), time.timescale());
+}
+
 bool
 AVTimeRange::contains(const AVTime& time) const
 {
@@ -67,7 +77,7 @@ AVTimeRange::to_string() const
 
 bool
 AVTimeRange::valid() const {
-    return p->start.valid() && p->duration.valid() && p->duration.time() > 0;
+    return p->start.valid() && p->duration.valid() && p->duration.ticks() > 0;
 }
 
 void

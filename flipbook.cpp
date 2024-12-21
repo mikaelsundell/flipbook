@@ -35,10 +35,11 @@ class FlipbookPrivate : public QObject
         void play(bool checked);
         void next();
         void previous();
+        void increment(qint64 frame);
         void fullscreen(bool checked);
         void image(const QImage& image);
         void opened(const QString& filename);
-        void timecoded(const AVSmpteTime& timecode);
+        void timecoded(const AVTime& time);
 
     Q_SIGNALS:
         void play_changed(bool checked);
@@ -87,7 +88,7 @@ class FlipbookPrivate : public QObject
         QWidget* timelinewidget;
         QWidget* renderwidget;
         QWidget* statuswidget;
-        QDoubleSpinBox* rate;
+        QDoubleSpinBox* fps;
         QLabel* timecode;
         QLabel* start;
         QLabel* duration;
@@ -208,10 +209,10 @@ FlipbookPrivate::init()
         timecode = new QLabel("00:00:00:00", toolswidget);
         timecode->setMinimumWidth(80);
         QLabel* ratelabel = new QLabel("FPS", toolswidget);
-        rate = new QDoubleSpinBox(toolswidget);
-        rate->setMinimum(1.0);
-        rate->setMaximum(120.0);
-        rate->setMinimumWidth(80);
+        fps = new QDoubleSpinBox(toolswidget);
+        fps->setMinimum(1.0);
+        fps->setMaximum(120.0);
+        fps->setMinimumWidth(80);
         QLabel* memlabel = new QLabel("MEM", toolswidget);
         QDoubleSpinBox* mem = new QDoubleSpinBox(toolswidget);
         mem->setValue(1024.0);
@@ -268,7 +269,7 @@ FlipbookPrivate::init()
             toolslayout->addWidget(line);
         }
         toolslayout->addWidget(ratelabel);
-        toolslayout->addWidget(rate);
+        toolslayout->addWidget(fps);
         toolslayout->addWidget(memlabel);
         toolslayout->addWidget(mem);
         toolslayout->addStretch(1);
@@ -282,6 +283,7 @@ FlipbookPrivate::init()
         connect(fullscreen, &QPushButton::toggled, this, &FlipbookPrivate::fullscreen);
         connect(this, &FlipbookPrivate::play_changed, play, &QPushButton::setChecked);
         connect(this, &FlipbookPrivate::fullscreen_changed, fullscreen, &QPushButton::setChecked);
+        connect(stream.data(), &AVStream::time_changed, this, &FlipbookPrivate::timecoded);
     }
     timelinewidget = new QWidget();
     {
@@ -299,9 +301,9 @@ FlipbookPrivate::init()
         timelinelayout->addWidget(duration);
         layout->addWidget(timelinewidget);
         
-        connect(timeline, &Timeline::time_changed, this, &FlipbookPrivate::seek);
-        connect(timeline, &Timeline::timecode_changed, this, &FlipbookPrivate::timecoded);
-        //connect(stream.data(), &AVStream::frame_changed, timeline, &Timeline::set_value);
+        //connect(timeline, &Timeline::time_changed, this, &FlipbookPrivate::seek);
+        //connect(timeline, &Timeline::timecode_changed, this, &FlipbookPrivate::timecoded);
+        connect(stream.data(), &AVStream::time_changed, timeline, &Timeline::set_time);
     }
     renderwidget = new QWidget();
     {
@@ -361,14 +363,16 @@ FlipbookPrivate::open()
 void
 FlipbookPrivate::seek(AVTime time)
 {
-    if (stream->error() == AVStream::NO_ERROR) {
-        if (stream->time() != time) {
-            run_seek(time);
+    if (!stream->is_playing()) {
+        if (stream->error() == AVStream::NO_ERROR) {
+            if (stream->time() != time) {
+                run_seek(time);
+            }
         }
-    }
-    else {
-        status->setText(stream->error_message());
-        qWarning() << "warning: " << status->text();
+        else {
+            status->setText(stream->error_message());
+            qWarning() << "warning: " << status->text();
+        }
     }
 }
 
@@ -383,24 +387,29 @@ FlipbookPrivate::play(bool checked)
         else {
             stream->stop();
         }
-        play_changed(checked);
     }
+    play_changed(checked);
 }
 
 void
 FlipbookPrivate::previous()
 {
-    //if (stream->is_open()) {
-    //    seek(qBound(stream->frame() - 1, //stream->start_frame(), stream->end_frame()));
-    //}
+    increment(-1);
 }
 
 void
 FlipbookPrivate::next()
 {
-    //if (stream->is_open()) {
-    //    seek(qBound(stream->frame() + 1, //stream->start_frame(), stream->end_frame()));
-    //}
+    increment(1);
+}
+
+void
+FlipbookPrivate::increment(qint64 frame)
+{
+    AVTime time = stream->time();
+    AVTimeRange timerange = stream->range();
+    qreal fps = stream->fps();
+    run_seek(timerange.bound(AVTime(time.ticks() + frame * time.to_ticks_frame(fps), time.timescale())));
 }
 
 void
@@ -434,12 +443,12 @@ FlipbookPrivate::opened(const QString& filename)
 {
     if (stream->error() == AVStream::NO_ERROR) {
         AVTimeRange range = stream->range();
-        start->setText(QString("Start: %1").arg(range.start().time()));
-        duration->setText(QString("Duration: %1").arg(range.duration().time()));
-        timeline->set_time(AVTime(stream->range().start().time(), stream->range().duration().timescale()));
+        start->setText(QString("Start: %1").arg(range.start().ticks()));
+        duration->setText(QString("Duration: %1").arg(range.duration().ticks()));
+        timeline->set_time(stream->time());
         timeline->set_range(stream->range());
         timeline->setEnabled(true);
-        rate->setValue(stream->rate());
+        fps->setValue(stream->fps());
     }
     else {
         status->setText(stream->error_message());
@@ -464,9 +473,9 @@ FlipbookPrivate::image(const QImage& image)
 }
 
 void
-FlipbookPrivate::timecoded(const AVSmpteTime& tc)
+FlipbookPrivate::timecoded(const AVTime& time)
 {
-    timecode->setText(tc.to_string());
+    timecode->setText(AVSmpteTime(time).to_string());
 }
 
 #include "flipbook.moc"

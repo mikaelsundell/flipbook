@@ -25,18 +25,17 @@ AVSmpteTime::AVSmpteTime()
 AVSmpteTime::AVSmpteTime(const AVTime& other)
 : p(new AVSmpteTimePrivate())
 {
-    if (other.valid() && other.time() > 0) {
-        qint64 totalFrames = other.time() / other.timescale();
-        p->hours = totalFrames / 3600;
-        totalFrames %= 3600;
-        p->minutes = totalFrames / 60;
-        totalFrames %= 60;
-        p->seconds = totalFrames;
-        p->frames = (other.time() % other.timescale()) / (other.timescale() / 24);
+    if (other.valid() && other.ticks() > 0) {
+        qint64 totalframes = other.ticks() / other.timescale();
+        p->hours = totalframes / 3600;
+        totalframes %= 3600;
+        p->minutes = totalframes / 60;
+        totalframes %= 60;
+        p->seconds = totalframes;
+        p->frames = (other.ticks() % other.timescale()) / (other.timescale() / 24);
         p->subframes = 0;
         p->subframedivisor = 1;
     } else {
-        // Fallback to default invalid state
         p->hours = 0;
         p->minutes = 0;
         p->seconds = 0;

@@ -18,6 +18,7 @@ class AVTimeRange
         AVTime start() const;
         AVTime duration() const;
         AVTime end() const;
+        AVTime bound(AVTime time);
         bool contains(const AVTime& time) const;
         bool overlaps(const AVTimeRange& other) const;
         QString to_string() const;

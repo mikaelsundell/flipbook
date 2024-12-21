@@ -6,11 +6,11 @@
 class AVTimePrivate
 {
     public:
-        qint64 time = 0;
-        quint32 timescale = 1;
+        qint64 ticks = 0;
+        qint32 timescale = 1;
         QAtomicInt ref;
         qreal to_seconds() const {
-            return static_cast<qreal>(time) / timescale;
+            return static_cast<qreal>(ticks) / timescale;
         }
 };
 
@@ -19,10 +19,10 @@ AVTime::AVTime()
 {
 }
 
-AVTime::AVTime(qint64 time, qint32 timescale)
+AVTime::AVTime(qint64 ticks, qint32 timescale)
 : p(new AVTimePrivate())
 {
-    p->time = time;
+    p->ticks = ticks;
     p->timescale = timescale;
 }
 
@@ -36,9 +36,9 @@ AVTime::~AVTime()
 }
 
 qint64
-AVTime::time() const
+AVTime::ticks() const
 {
-    return p->time;
+    return p->ticks;
 }
 
 qint32
@@ -47,13 +47,25 @@ AVTime::timescale() const
     return p->timescale;
 }
 
+qint64
+AVTime::to_frame(qreal fps) const
+{
+    return static_cast<qint64>(ticks() / to_ticks_frame(fps));
+}
+
+qint64
+AVTime::to_ticks_frame(qreal fps) const
+{
+    return static_cast<qint64>(std::round(static_cast<qreal>(timescale()) / fps));
+}
+
 void
-AVTime::set_time(qint64 time)
+AVTime::set_ticks(qint64 ticks)
 {
     if (p->ref.loadRelaxed() > 1) {
         p.detach();
     }
-    p->time = time;
+    p->ticks = ticks;
 }
 
 void
@@ -104,7 +116,7 @@ AVTime::operator=(const AVTime& other)
 bool
 AVTime::operator==(const AVTime& other) const
 {
-    return p->time == other.p->time && p->timescale == other.p->timescale;
+    return p->ticks == other.p->ticks && p->timescale == other.p->timescale;
 }
 
 bool
@@ -135,9 +147,9 @@ AVTime::operator>=(const AVTime& other) const {
 AVTime
 AVTime::operator+(const AVTime& other) const {
     if (p->timescale == other.p->timescale) {
-        return AVTime(p->time + other.p->time, p->timescale);
+        return AVTime(p->ticks + other.p->ticks, p->timescale);
     } else {
-        qint64 t = (p->time * other.p->timescale) + (other.p->time * p->timescale);
+        qint64 t = (p->ticks * other.p->timescale) + (other.p->ticks * p->timescale);
         qint32 ts = p->timescale * other.p->timescale;
         return AVTime(t, ts);
     }
