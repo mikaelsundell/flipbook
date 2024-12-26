@@ -18,21 +18,20 @@ class AVReaderPrivate
     public:
         AVReaderPrivate();
         ~AVReaderPrivate();
-        void ui();
         void init();
         void open();
         void close();
         void read();
-        void seek(CMTime time);
+        void seek(const AVTime& time);
         void stream();
     
     public:
-        void debug_time(QImage& image, CMTime time) { // todo: temporary
+        void debug_time(QImage& image, AVTime time) { // todo: temporary
             QPainter painter(&image);
             QFont font("Arial", 50, QFont::Bold);
             painter.setFont(font);
             painter.setPen(QColor(Qt::white));
-            QString text = QString("AVTime: %1 / %2").arg(time.value).arg(time.timescale);
+            QString text = QString("AVTime: %1 / %2").arg(time.ticks()).arg(time.timescale());
             QFontMetrics fm(font);
             int textWidth = fm.horizontalAdvance(text);
             int textHeight = fm.height();
@@ -41,25 +40,24 @@ class AVReaderPrivate
             painter.end();
         }
         // https://developer.apple.com/library/archive/technotes/tn2310/_index.html
+        // todo: these are temporary, move to AVSmpteTime
         int64_t to_frame(CVSMPTETime timecode, uint32_t framequanta, uint32_t flags);
         CVSMPTETime to_timecode(int64_t frame, uint32_t framequanta, uint32_t flags);
-        AVTime to_time(CMTime other);
-        CMTime to_time(AVTime other);
-        AVTimeRange to_timerange(CMTimeRange other);
-        AVSmpteTime to_timecode(CVSMPTETime other);
-        bool compare_time(CMTime time, AVTime other);
-        bool compare_timecode(CVSMPTETime timecode, AVSmpteTime other);
-        CMTime scale_time(CMTime other, int32_t scale = 240000); // todo: 240000 enough for most needs?
-        CMTimeRange scale_timerange(CMTimeRange other, int32_t scale = 240000);
-        int64_t ticks_per_frame(CMTimeRange range, qreal fps);
+        CMTime to_time(const AVTime& other);
+        CMTimeRange to_timerange(const AVTimeRange& other);
+        AVTime to_time(const CMTime& other);
+        AVTimeRange to_timerange(const CMTimeRange& other);
+        AVSmpteTime to_timecode(const CVSMPTETime& other);
         AVAsset* asset = nil;
         AVAssetReader* reader = nil;
         AVAssetReaderTrackOutput* videooutput = nil;
         CVSMPTETime timecode;
-        QString filename;
-        CMTimeRange timerange;
-        CMTime timestamp;
+        AVTimeRange timerange;
+        AVTime timestamp;
         qreal fps = 0.0;
+        QString filename;
+        QString title;
+        std::atomic<bool> loop;
         std::atomic<bool> streaming;
         AVMetadata metadata;
         AVSidecar sidecar;
@@ -69,7 +67,8 @@ class AVReaderPrivate
 };
 
 AVReaderPrivate::AVReaderPrivate()
-: streaming(false)
+: loop(false)
+, streaming(false)
 {
 }
 
@@ -131,6 +130,9 @@ AVReaderPrivate::open()
                 QString key = QString::fromNSString(item.commonKey);
                 QString value = QString::fromNSString(item.value.description);
                 if (!key.isEmpty() || !value.isEmpty()) {
+                    if (key == "title") { // todo: probably to simple but lets keep it for now
+                        title = value;
+                    }
                     metadata.add_pair(key, value);
                 }
             }
@@ -143,8 +145,8 @@ AVReaderPrivate::open()
         qWarning() << "warning: " << errormessage;
         return false;
     }
-    timerange = scale_timerange(videotrack.timeRange);
-    timestamp = timerange.start;
+    timerange = AVTimeRange::scale(to_timerange(videotrack.timeRange));
+    timestamp = timerange.start();
     fps = videotrack.nominalFrameRate;
     AVAssetTrack* timecodetrack = [[asset tracksWithMediaType:AVMediaTypeTimecode] firstObject];
     if (timecodetrack) {
@@ -155,7 +157,6 @@ AVReaderPrivate::open()
             qWarning() << "warning: " << errormessage;
             return false;
         }
-        
         AVAssetReaderTrackOutput* timecodeoutput = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:timecodetrack outputSettings:nil];
         [timecodereader addOutput:timecodeoutput];
         bool success = [timecodereader startReading];
@@ -230,8 +231,9 @@ AVReaderPrivate::close()
     reader = nil;
     videooutput = nil;
     timecode = CVSMPTETime();
-    timerange = CMTimeRange();
-    timestamp = CMTime();
+    timerange = AVTimeRange();
+    timestamp = AVTime();
+    title.clear();
     streaming = false;
     fps = 0.0f;
     metadata = AVMetadata();
@@ -270,17 +272,17 @@ AVReaderPrivate::read()
                  static_cast<int>(bytes),
                  QImage::Format_ARGB32);
     CVPixelBufferUnlockBaseAddress(imagebuffer, kCVPixelBufferLock_ReadOnly);
-    timestamp = scale_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer));
+    timestamp = AVTime::scale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)));
     CFRelease(samplebuffer);
     debug_time(image, timestamp); // todo: temporary
-    object->time_changed(to_time(timestamp));
     object->video_changed(image.copy());
 }
 
 void
-AVReaderPrivate::seek(CMTime time)
+AVReaderPrivate::seek(const AVTime& time)
 {
     Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
+ 
     if (reader) {
         [reader cancelReading];
         reader = nil;
@@ -312,45 +314,42 @@ AVReaderPrivate::seek(CMTime time)
         return;
     }
     [reader addOutput:videooutput];
-    CMTime end = CMTimeAdd(timerange.start, timerange.duration);
-    CMTime duration = CMTimeSubtract(end, time);
-    reader.timeRange = CMTimeRangeMake(time, duration);
+    AVTime duration = timerange.end() - time;
+    reader.timeRange = CMTimeRangeMake(to_time(time), to_time(duration));
     if (![reader startReading]) {
         error = AVReader::API_ERROR;
         errormessage = "failed to start reading after seeking";
         qWarning() << "warning: " << errormessage;
         return;
     }
+    timestamp = time;
+    object->time_changed(timestamp);
 }
 
 void
 AVReaderPrivate::stream()
 {
     streaming = true;
-    qint64 ticks = ticks_per_frame(timerange, fps); // match the samples in video
-    for (CMTime current = timestamp;
-         CMTimeCompare(current, timerange.duration) < 0;
-         current = CMTimeAdd(current, CMTimeMake(ticks, timerange.duration.timescale))) {
-        if (streaming) {
-            if (CMTimeCompare(CMTimeAdd(current, CMTimeMake(ticks, timerange.duration.timescale)), timerange.duration) >= 0) {
-                timestamp = timerange.duration;
-                object->time_changed(to_time(timestamp));
-                break; // last frame until duration
+    object->stream_changed(streaming);
+    while (streaming) {
+        seek(timestamp);
+        qint64 start = timestamp.frame(fps);
+        qint64 duration = timerange.duration().frame(fps);
+        for (qint64 frame = start; frame < duration; frame++) {
+            if (!streaming) {
+                break;
             }
-            qDebug() << "reading stream";
-            qDebug() << "- ticks: " << ticks;
-            qDebug() << "- current: " << current.value;
-            qDebug() << "- duration: " << timerange.duration.value;
-            
             read();
-            
-            // todo: drop frames, time elapsed after read() from gui
+            object->time_changed(timestamp);
             QThread::msleep((1 / fps) * 1000);
-        } else {
+        }
+        if (!loop || !streaming) {
             break;
         }
+        timestamp = timerange.start();
     }
-    object->finished();
+    streaming = false;
+    object->stream_changed(streaming);
 }
 
 int64_t
@@ -432,9 +431,15 @@ AVReaderPrivate::to_timecode(int64_t frame, uint32_t framequanta, uint32_t flags
     timecode.flags = kCVSMPTETimeValid;
     return timecode;
 }
+                       
+CMTime
+AVReaderPrivate::to_time(const AVTime& other) {
+   return CMTimeMakeWithEpoch(other.ticks(), other.timescale(), 0); // default epoch and flags
+}
+
 
 AVTime
-AVReaderPrivate::to_time(CMTime other) {
+AVReaderPrivate::to_time(const CMTime& other) {
     AVTime time;
     if (CMTIME_IS_VALID(other)) {
         time.set_ticks(other.value);
@@ -443,13 +448,8 @@ AVReaderPrivate::to_time(CMTime other) {
     return time;
 }
 
-CMTime
-AVReaderPrivate::to_time(AVTime other) {
-    return CMTimeMakeWithEpoch(other.ticks(), other.timescale(), 0); // default epoch and flags
-}
-
 AVTimeRange
-AVReaderPrivate::to_timerange(CMTimeRange timerange) {
+AVReaderPrivate::to_timerange(const CMTimeRange& timerange) {
     AVTimeRange range;
     if (CMTIMERANGE_IS_VALID(timerange)) {
         range.set_start(to_time(timerange.start));
@@ -460,7 +460,7 @@ AVReaderPrivate::to_timerange(CMTimeRange timerange) {
 }
 
 AVSmpteTime
-AVReaderPrivate::to_timecode(CVSMPTETime other) {
+AVReaderPrivate::to_timecode(const CVSMPTETime& other) {
     AVSmpteTime timecode;
     timecode.set_counter(other.counter);
     timecode.set_type(other.type);
@@ -471,38 +471,6 @@ AVReaderPrivate::to_timecode(CVSMPTETime other) {
     timecode.set_subframes(other.subframes);
     timecode.set_subframedivisor(other.subframeDivisor);
     return timecode;
-}
-
-bool
-AVReaderPrivate::compare_time(CMTime time, AVTime other) {
-    return to_time(time) == other;
-}
-
-bool
-AVReaderPrivate::compare_timecode(CVSMPTETime timecode, AVSmpteTime other) {
-    return to_timecode(timecode) == other;
-}
-
-int64_t
-AVReaderPrivate::ticks_per_frame(CMTimeRange range, qreal fps)
-{
-    int32_t timescale = timerange.duration.timescale;
-    return static_cast<int64_t>(std::round(static_cast<qreal>(timescale) / fps));
-}
-
-CMTime
-AVReaderPrivate::scale_time(CMTime other, int32_t scale)
-{
-    return CMTimeConvertScale(other, scale, kCMTimeRoundingMethod_Default);
-}
-
-CMTimeRange
-AVReaderPrivate::scale_timerange(CMTimeRange other, int32_t scale)
-{
-    CMTimeRange range{ other.start, other.duration };
-    range.start = scale_time(range.start, scale);
-    range.duration = scale_time(range.duration, scale);
-    return range;
 }
 
 AVReader::AVReader()
@@ -553,28 +521,40 @@ AVReader::is_streaming() const
     return p->streaming;
 }
 
-const QString&
+QString
 AVReader::filename() const
 {
     return p->filename;
 }
 
+QString
+AVReader::title() const
+{
+    return p->title;
+}
+
 AVTime
 AVReader::time() const
 {
-    return p->to_time(p->timestamp);
+    return p->timestamp;
 }
 
 AVTimeRange
 AVReader::range() const
 {
-    return p->to_timerange(p->timerange);
+    return p->timerange;
 }
 
 qreal
 AVReader::fps() const
 {
     return p->fps;
+}
+
+bool
+AVReader::loop() const
+{
+    return p->loop;
 }
 
 AVSmpteTime
@@ -608,9 +588,18 @@ AVReader::sidecar()
 }
 
 void
-AVReader::seek(AVTime time)
+AVReader::set_loop(bool loop)
 {
-    p->seek(p->to_time(time));
+    if (p->loop != loop) {
+        p->loop = loop;
+        loop_changed(loop);
+    }
+}
+
+void
+AVReader::seek(const AVTime& time)
+{
+    p->seek(time);
 }
 
 void
@@ -620,7 +609,7 @@ AVReader::stream()
 }
 
 void
-AVReader::abort()
+AVReader::stop()
 {
     p->streaming = false;
 }

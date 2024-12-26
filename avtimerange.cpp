@@ -51,22 +51,17 @@ AVTimeRange::end() const {
 }
 
 AVTime
-AVTimeRange::bound(AVTime time)
+AVTimeRange::bound(const AVTime& time)
 {
     Q_ASSERT(time.timescale() == start().timescale());
     return AVTime(qBound(start().ticks(), time.ticks(), end().ticks()), time.timescale());
 }
 
-bool
-AVTimeRange::contains(const AVTime& time) const
+AVTime
+AVTimeRange::bound(const AVTime& time, qreal fps)
 {
-    return p->start <= time && time < end();
-}
-
-bool
-AVTimeRange::overlaps(const AVTimeRange& other) const
-{
-    return !(end() <= other.start() || other.end() <= start());
+    Q_ASSERT(time.timescale() == start().timescale());
+    return AVTime(qBound(start().ticks(), time.ticks(), end().ticks() - time.tpf(fps)), time.timescale());
 }
 
 QString
@@ -117,4 +112,10 @@ bool
 AVTimeRange::operator!=(const AVTimeRange& other) const
 {
     return !(*this == other);
+}
+
+AVTimeRange
+AVTimeRange::scale(AVTimeRange timerange, qint32 timescale)
+{
+    return AVTimeRange(AVTime::scale(timerange.start(), timescale), AVTime::scale(timerange.duration(), timescale));
 }

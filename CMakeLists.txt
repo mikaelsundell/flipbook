@@ -20,6 +20,8 @@ set (app_name "flipbook")
 
 # sources
 set (app_sources
+    avfps.h
+    avfps.cpp
     avmetadata.h
     avmetadata.cpp
     avsidecar.h

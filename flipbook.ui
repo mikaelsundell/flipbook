@@ -17,6 +17,9 @@
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QWidget" name="tools_widget" native="true">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <property name="spacing">
         <number>4</number>
@@ -41,7 +44,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="frame">
+        <widget class="QFrame" name="frame_9">
          <property name="frameShape">
           <enum>QFrame::Shape::VLine</enum>
          </property>
@@ -51,44 +54,71 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="tool_start">
-         <property name="text">
-          <string>start</string>
+        <widget class="QWidget" name="playback_widget" native="true">
+         <property name="enabled">
+          <bool>false</bool>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="tool_previous">
-         <property name="text">
-          <string>previous</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="tool_play">
          <property name="styleSheet">
           <string notr="true"/>
          </property>
-         <property name="text">
-          <string>play</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="tool_next">
-         <property name="text">
-          <string>next</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="tool_end">
-         <property name="text">
-          <string>end</string>
-         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>8</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="tool_start">
+            <property name="text">
+             <string>start</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="tool_previous">
+            <property name="text">
+             <string>previous</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="tool_next">
+            <property name="text">
+             <string>next</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="tool_play">
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
+            <property name="text">
+             <string>play</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="tool_end">
+            <property name="text">
+             <string>end</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
@@ -105,6 +135,9 @@
         <widget class="QPushButton" name="tool_loop">
          <property name="text">
           <string>loop</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -166,6 +199,29 @@
         </widget>
        </item>
        <item>
+        <widget class="QLabel" name="frame">
+         <property name="font">
+          <font>
+           <family>Courier New</family>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>0000</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="frame_7">
+         <property name="frameShape">
+          <enum>QFrame::Shape::VLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Plain</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="label">
          <property name="text">
           <string>FPS</string>
@@ -203,6 +259,9 @@
          <property name="text">
           <string>fullscreen</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
       </layout>
@@ -228,15 +287,25 @@
        </property>
        <item>
         <widget class="QLabel" name="timeline_start">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
-          <string>start</string>
+          <string/>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="timeline_in">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
-          <string>in</string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -252,15 +321,25 @@
        </item>
        <item>
         <widget class="QLabel" name="timeline_out">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
-          <string>out</string>
+          <string/>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="timeline_duration">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
-          <string>duration</string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -321,6 +400,11 @@
        </property>
        <item>
         <widget class="QLabel" name="status">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>Ready</string>
          </property>
@@ -328,6 +412,11 @@
        </item>
        <item>
         <widget class="QLabel" name="render">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>Zoom: 0, 0 Data 0, 0, 0 Display: 0, 0, 0</string>
          </property>
@@ -348,6 +437,11 @@
        </item>
        <item>
         <widget class="QLabel" name="format">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>Format: Float32 Colorspace: Linear Display: Rec709</string>
          </property>
@@ -378,29 +472,29 @@
      <x>0</x>
      <y>0</y>
      <width>1050</width>
-     <height>24</height>
+     <height>37</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
     <property name="title">
      <string>Menu</string>
     </property>
-    <addaction name="open"/>
+    <addaction name="menu_open"/>
     <addaction name="separator"/>
-    <addaction name="start"/>
-    <addaction name="previous"/>
-    <addaction name="play"/>
-    <addaction name="next"/>
-    <addaction name="end"/>
+    <addaction name="menu_start"/>
+    <addaction name="menu_previous"/>
+    <addaction name="menu_play"/>
+    <addaction name="menu_next"/>
+    <addaction name="menu_end"/>
     <addaction name="separator"/>
-    <addaction name="loop"/>
+    <addaction name="menu_loop"/>
     <addaction name="separator"/>
-    <addaction name="fullscreen"/>
+    <addaction name="menu_fullscreen"/>
    </widget>
    <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="play">
+  <action name="menu_play">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -411,47 +505,50 @@
     <string>Space</string>
    </property>
   </action>
-  <action name="open">
+  <action name="menu_open">
    <property name="text">
-    <string>Open</string>
+    <string>Open ...</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
    </property>
   </action>
-  <action name="next">
+  <action name="menu_next">
    <property name="text">
-    <string>Next</string>
+    <string>Go to &gt; Next frame</string>
    </property>
    <property name="shortcut">
     <string>Right</string>
    </property>
   </action>
-  <action name="previous">
+  <action name="menu_previous">
    <property name="text">
-    <string>Previous</string>
+    <string>Go to &gt; Previous frame</string>
    </property>
    <property name="shortcut">
     <string>Left</string>
    </property>
   </action>
-  <action name="start">
+  <action name="menu_start">
    <property name="text">
-    <string>Start</string>
+    <string>Go to &gt; Start</string>
    </property>
    <property name="shortcut">
     <string>Up</string>
    </property>
   </action>
-  <action name="end">
+  <action name="menu_end">
    <property name="text">
-    <string>End</string>
+    <string>Go to &gt; End</string>
    </property>
    <property name="shortcut">
     <string>Down</string>
    </property>
   </action>
-  <action name="fullscreen">
+  <action name="menu_fullscreen">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Fullscreen</string>
    </property>
@@ -459,7 +556,10 @@
     <string>F</string>
    </property>
   </action>
-  <action name="loop">
+  <action name="menu_loop">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Loop</string>
    </property>

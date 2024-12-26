@@ -18,9 +18,8 @@ class AVTimeRange
         AVTime start() const;
         AVTime duration() const;
         AVTime end() const;
-        AVTime bound(AVTime time);
-        bool contains(const AVTime& time) const;
-        bool overlaps(const AVTimeRange& other) const;
+        AVTime bound(const AVTime& time);
+        AVTime bound(const AVTime& time, qreal fps);
         QString to_string() const;
         bool valid() const;
     
@@ -30,6 +29,8 @@ class AVTimeRange
         AVTimeRange& operator=(const AVTimeRange& other);
         bool operator==(const AVTimeRange& other) const;
         bool operator!=(const AVTimeRange& other) const;
+    
+        static AVTimeRange scale(AVTimeRange timerange, qint32 timescale = 24000);
     
     private:
         QExplicitlySharedDataPointer<AVTimeRangePrivate> p;

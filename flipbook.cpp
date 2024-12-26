@@ -35,21 +35,21 @@ class FlipbookPrivate : public QObject
     public Q_SLOTS:
         void open();
         void seek(AVTime time);
-        void start();
-        void previous();
-        void play(bool checked);
-        void next();
-        void end();
-        void increment(qint64 frame);
+        void seek_start();
+        void seek_previous();
+        void seek_next();
+        void seek_end();
+        void seek_frame(qint64 frame);
+        void seek_time(const AVTime& time);
+        void stream(bool checked);
+        void stop();
+    
+        void set_opened(const QString& filename);
+        void set_video(const QImage& image);
+        void set_audio(const QByteArray& buffer);
+        void set_time(const AVTime& time);
         void fullscreen(bool checked);
-        void video(const QImage& image);
-        void opened(const QString& filename);
-        void finished();
-        void timecoded(const AVTime& time);
-
-    Q_SIGNALS:
-        void play_changed(bool checked);
-        void fullscreen_changed(bool checked);
+        void loop(bool checked);
 
     public:
         void run_open(const QString& filename) {
@@ -57,6 +57,7 @@ class FlipbookPrivate : public QObject
                 future = QtConcurrent::run([&, filename] {
                     reader->open(filename);
                     reader->read();
+                    reader->seek(reader->range().start()); // todo: make sure we reset after read()
                 });
             } else {
                 qWarning() << "could not open reader, thread already running";
@@ -70,7 +71,7 @@ class FlipbookPrivate : public QObject
                 });
             }
             else {
-                qWarning() << "could not seek reader at time: " << time.to_string() << ", thread already running";
+                qWarning() << "could not seek reader at time: " << time.to_string() << ", ticks, " << time.ticks() << ", frame: " << time.frame(reader->fps()) << ", thread already running";
             }
         }
         void run_stream() {
@@ -80,14 +81,23 @@ class FlipbookPrivate : public QObject
                 });
             }
             else {
-                qWarning() << "could not play reader, thread already running";
+                qWarning() << "could not run stream thread already running";
+            }
+        }
+        void run_stop() {
+            reader->stop();
+            if (future.isRunning()) {
+                future.waitForFinished();
+            }
+            else {
+                qWarning() << "could not wait for finished, thread is not running";
             }
         }
     public:
-        class State {
-            public:
-                bool stream;
-                bool fullscreen;
+        struct State {
+            bool loop;
+            bool stream;
+            bool fullscreen;
         };
         State state;
         QFuture<void> future;
@@ -108,32 +118,46 @@ FlipbookPrivate::init()
     ui.reset(new Ui_Flipbook());
     ui->setupUi(window.data());
     window->setFocus();
+    
     // reader
     reader.reset(new AVReader());
     
     // connect
-    connect(ui->open, &QAction::triggered, this, &FlipbookPrivate::open);
-    connect(ui->start, &QAction::triggered, this, &FlipbookPrivate::start);
-    connect(ui->previous, &QAction::triggered, this, &FlipbookPrivate::previous);
-    connect(ui->play, &QAction::triggered, this, &FlipbookPrivate::play);
-    connect(ui->next, &QAction::triggered, this, &FlipbookPrivate::next);
-    connect(ui->end, &QAction::triggered, this, &FlipbookPrivate::end);
+    connect(ui->menu_open, &QAction::triggered, this, &FlipbookPrivate::open);
+    connect(ui->menu_start, &QAction::triggered, this, &FlipbookPrivate::seek_start);
+    connect(ui->menu_previous, &QAction::triggered, this, &FlipbookPrivate::seek_previous);
+    connect(ui->menu_play, &QAction::triggered, this, &FlipbookPrivate::stream);
+    connect(ui->menu_next, &QAction::triggered, this, &FlipbookPrivate::seek_next);
+    connect(ui->menu_end, &QAction::triggered, this, &FlipbookPrivate::seek_end);
+    connect(ui->menu_loop, &QAction::triggered, this, &FlipbookPrivate::loop);
+    connect(ui->menu_fullscreen, &QAction::triggered, this, &FlipbookPrivate::fullscreen);
     
     connect(ui->tool_open, &QPushButton::pressed, this, &FlipbookPrivate::open);
-    connect(ui->tool_start, &QPushButton::pressed, this, &FlipbookPrivate::start);
-    connect(ui->tool_previous, &QPushButton::pressed, this, &FlipbookPrivate::previous);
-    connect(ui->tool_play, &QPushButton::toggled, this, &FlipbookPrivate::play);
-    connect(ui->tool_next, &QPushButton::pressed, this, &FlipbookPrivate::next);
-    connect(ui->tool_end, &QPushButton::pressed, this, &FlipbookPrivate::end);
+    connect(ui->tool_start, &QPushButton::pressed, this, &FlipbookPrivate::seek_start);
+    connect(ui->tool_previous, &QPushButton::pressed, this, &FlipbookPrivate::seek_previous);
+    connect(ui->tool_play, &QPushButton::toggled, this, &FlipbookPrivate::stream);
+    connect(ui->tool_next, &QPushButton::pressed, this, &FlipbookPrivate::seek_next);
+    connect(ui->tool_end, &QPushButton::pressed, this, &FlipbookPrivate::seek_end);
+    connect(ui->tool_loop, &QPushButton::toggled, this, &FlipbookPrivate::loop);
+    connect(ui->tool_fullscreen, &QPushButton::toggled, this, &FlipbookPrivate::fullscreen);
     
-    connect(this, &FlipbookPrivate::play_changed, ui->play, &QAction::setChecked);
-    connect(this, &FlipbookPrivate::play_changed, ui->tool_play, &QPushButton::setChecked);
+    // timeline
+    connect(ui->timeline, &Timeline::slider_pressed, this, &FlipbookPrivate::stop);
+    connect(ui->timeline, &Timeline::slider_moved, this, &FlipbookPrivate::seek_time);
     
-    connect(reader.data(), &AVReader::opened, this, &FlipbookPrivate::opened);
-    connect(reader.data(), &AVReader::time_changed, this, &FlipbookPrivate::timecoded);
+    // reader
+    connect(reader.data(), &AVReader::opened, this, &FlipbookPrivate::set_opened);
+    connect(reader.data(), &AVReader::video_changed, this, &FlipbookPrivate::set_video);
+    connect(reader.data(), &AVReader::audio_changed, this, &FlipbookPrivate::set_audio);
+    connect(reader.data(), &AVReader::time_changed, this, &FlipbookPrivate::set_time);
+    
+    connect(reader.data(), &AVReader::stream_changed, ui->menu_play, &QAction::setChecked);
+    connect(reader.data(), &AVReader::stream_changed, ui->tool_play, &QPushButton::setChecked);
+    
+    connect(reader.data(), &AVReader::loop_changed, ui->menu_loop, &QAction::setChecked);
+    connect(reader.data(), &AVReader::loop_changed, ui->tool_loop, &QPushButton::setChecked);
+
     connect(reader.data(), &AVReader::time_changed, ui->timeline, &Timeline::set_time);
-    
-    connect(reader.data(), &AVReader::video_changed, this, &FlipbookPrivate::video);
 }
 
 void
@@ -153,72 +177,77 @@ FlipbookPrivate::open()
 void
 FlipbookPrivate::seek(AVTime time)
 {
-    if (!reader->is_streaming()) {
-        if (reader->error() == AVReader::NO_ERROR) {
-            if (reader->time() != time) {
-                run_seek(time);
-            }
+    if (reader->is_streaming()) {
+        stop();
+    }
+    if (reader->error() == AVReader::NO_ERROR) {
+        if (reader->time() != time) {
+            run_seek(time);
         }
-        else {
-            ui->status->setText(reader->error_message());
-            qWarning() << "warning: " << ui->status->text();
-        }
+    }
+    else {
+        ui->status->setText(reader->error_message());
+        qWarning() << "warning: " << ui->status->text();
     }
 }
 
 void
-FlipbookPrivate::start()
+FlipbookPrivate::seek_start()
 {
     seek(reader->range().start());
 }
 
 void
-FlipbookPrivate::play(bool checked)
+FlipbookPrivate::seek_previous()
 {
-    qDebug() << "play called by: " << sender();
-    
+    seek_frame(-1);
+}
+
+void
+FlipbookPrivate::seek_next()
+{
+    seek_frame(1);
+}
+
+void
+FlipbookPrivate::seek_end()
+{
+    seek(reader->range().end());
+}
+
+void
+FlipbookPrivate::seek_frame(qint64 frame)
+{
+    AVTime time = reader->time();
+    AVTimeRange timerange = reader->range();
+    qreal fps = reader->fps();
+    run_seek(timerange.bound(AVTime(time.ticks() + time.ticks(frame, fps), time.timescale()), fps));
+}
+
+void
+FlipbookPrivate::seek_time(const AVTime& time)
+{
+    run_seek(time);
+}
+
+void
+FlipbookPrivate::stream(bool checked)
+{
     if (state.stream != checked) {
-        
-        qDebug() << "- state was changed to: " << checked;
-        
         state.stream = checked;
         if (state.stream) {
             run_stream();
         }
         else {
-            reader->abort();
+            reader->stop();
         }
     }
-    else {
-        qDebug() << "- state ignored for now";
-    }
-    play_changed(checked);
 }
 
 void
-FlipbookPrivate::previous()
+FlipbookPrivate::stop()
 {
-    increment(-1);
-}
-
-void
-FlipbookPrivate::next()
-{
-    increment(1);
-}
-
-void
-FlipbookPrivate::end()
-{
-}
-
-void
-FlipbookPrivate::increment(qint64 frame)
-{
-    AVTime time = reader->time();
-    AVTimeRange timerange = reader->range();
-    qreal fps = reader->fps();
-    run_seek(timerange.bound(AVTime(time.ticks() + frame * time.to_ticks_frame(fps), time.timescale())));
+    run_stop();
 }
 
 void
@@ -244,21 +273,31 @@ FlipbookPrivate::fullscreen(bool checked)
             window->showNormal();
         }
         state.fullscreen = checked;
-        fullscreen_changed(checked);
     }
 }
 
 void
-FlipbookPrivate::opened(const QString& filename)
+FlipbookPrivate::loop(bool checked)
+{
+    if (state.loop != checked) {
+        reader->set_loop(checked);
+        state.loop = checked;
+    }
+}
+
+void
+FlipbookPrivate::set_opened(const QString& filename)
 {
     if (reader->error() == AVReader::NO_ERROR) {
         AVTimeRange range = reader->range();
-        ui->timeline_start->setText(QString("Start: %1").arg(range.start().ticks()));
-        ui->timeline_duration->setText(QString("Duration: %1").arg(range.duration().ticks()));
+        ui->timeline_start->setText(AVSmpteTime(range.start()).to_string());
+        ui->timeline_duration->setText(AVSmpteTime(range.end()).to_string());
         ui->timeline->set_time(reader->time());
         ui->timeline->set_range(reader->range());
+        ui->timeline->set_fps(reader->fps());
         ui->timeline->setEnabled(true);
         ui->fps->setValue(reader->fps());
+        ui->playback_widget->setEnabled(true);
     }
     else {
         ui->status->setText(reader->error_message());
@@ -267,19 +306,14 @@ FlipbookPrivate::opened(const QString& filename)
 }
 
 void
-FlipbookPrivate::finished()
-{
-    play_changed(false);
-}
-
-void
-FlipbookPrivate::video(const QImage& image)
+FlipbookPrivate::set_video(const QImage& image)
 {
     if (reader->error() == AVReader::NO_ERROR) {
-        window->setWindowTitle(QString("Flipbook: %1: %2")
-                               .arg(QFileInfo(reader->filename()).fileName())
-                               .arg(reader->time().to_string())
-                               );
+        QString title = reader->title();
+        if (title.isEmpty()) {
+            title = QFileInfo(reader->filename()).fileName();
+        }
+        window->setWindowTitle(QString("Flipbook: %1 (%2)").arg(title).arg(reader->time().frame(reader->fps())));
         ui->rhi_widget->set_image(image);
     }
     else {
@@ -289,9 +323,22 @@ FlipbookPrivate::video(const QImage& image)
 }
 
 void
-FlipbookPrivate::timecoded(const AVTime& time)
+FlipbookPrivate::set_audio(const QByteArray& buffer)
+{
+    if (reader->error() == AVReader::NO_ERROR) {
+        // todo: we don't support audio streaming yet
+    }
+    else {
+        ui->status->setText(reader->error_message());
+        qWarning() << "warning: " << ui->status->text();
+    }
+}
+
+void
+FlipbookPrivate::set_time(const AVTime& time)
 {
     ui->timecode->setText(AVSmpteTime(time).to_string());
+    ui->frame->setText(QString("%1").arg(time.frame(reader->fps()), 4, 10, QChar('0')));
 }
 
 #include "flipbook.moc"

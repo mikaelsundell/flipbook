@@ -22,16 +22,24 @@ class Timeline : public QWidget
         Timeline(QWidget* parent = nullptr);
         virtual ~Timeline();
         QSize sizeHint() const override;
+        AVTimeRange range() const;
+        AVTime time() const;
+        qreal fps() const;
+        bool tracking() const;
         Units units() const;
     
     public Q_SLOTS:
         void set_range(const AVTimeRange& range);
         void set_time(const AVTime& time);
+        void set_fps(qreal fps);
+        void set_tracking(bool tracking);
         void set_units(Timeline::Units units);
     
     Q_SIGNALS:
         void time_changed(const AVTime& time);
         void timecode_changed(const AVSmpteTime& timecode);
+    
+        void slider_moved(const AVTime& time); // todo: look into name here, good enough?
         void slider_pressed();
         void slider_released();
     
