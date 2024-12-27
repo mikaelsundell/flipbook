@@ -37,8 +37,8 @@ set (app_sources
     flipbook.h
     flipbook.cpp
     main.cpp
-    mac.h
-    mac.mm
+    platform.h
+    platform.mm
     rhiwidget.h
     rhiwidget.cpp
     timeline.h

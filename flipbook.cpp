@@ -3,7 +3,7 @@
 
 #include "flipbook.h"
 #include "avreader.h"
-#include "mac.h"
+#include "platform.h"
 #include "rhiwidget.h"
 #include "timeline.h"
 
@@ -50,6 +50,9 @@ class FlipbookPrivate : public QObject
         void set_time(const AVTime& time);
         void fullscreen(bool checked);
         void loop(bool checked);
+    
+        void power(Platform::Power power);
+        void stayawake(bool checked);
 
     public:
         void run_open(const QString& filename) {
@@ -103,6 +106,7 @@ class FlipbookPrivate : public QObject
         QFuture<void> future;
         QScopedPointer<AVReader> reader;
         QPointer<Flipbook> window;
+        QScopedPointer<Platform> platform;
         QScopedPointer<Ui_Flipbook> ui;
 };
 
@@ -113,7 +117,7 @@ FlipbookPrivate::FlipbookPrivate()
 void
 FlipbookPrivate::init()
 {
-    mac::setDarkAppearance();
+    platform.reset(new Platform());
     // ui
     ui.reset(new Ui_Flipbook());
     ui->setupUi(window.data());
@@ -145,6 +149,9 @@ FlipbookPrivate::init()
     connect(ui->timeline, &Timeline::slider_pressed, this, &FlipbookPrivate::stop);
     connect(ui->timeline, &Timeline::slider_moved, this, &FlipbookPrivate::seek_time);
     
+    // status
+    connect(ui->stayawake, &QCheckBox::clicked, this, &FlipbookPrivate::stayawake);
+    
     // reader
     connect(reader.data(), &AVReader::opened, this, &FlipbookPrivate::set_opened);
     connect(reader.data(), &AVReader::video_changed, this, &FlipbookPrivate::set_video);
@@ -158,6 +165,9 @@ FlipbookPrivate::init()
     connect(reader.data(), &AVReader::loop_changed, ui->tool_loop, &QPushButton::setChecked);
 
     connect(reader.data(), &AVReader::time_changed, ui->timeline, &Timeline::set_time);
+    
+    // platform
+    connect(platform.data(), &Platform::power_changed, this, &FlipbookPrivate::power);
 }
 
 void
@@ -219,9 +229,7 @@ void
 FlipbookPrivate::seek_frame(qint64 frame)
 {
     AVTime time = reader->time();
-    AVTimeRange timerange = reader->range();
-    qreal fps = reader->fps();
-    run_seek(timerange.bound(AVTime(time.ticks() + time.ticks(frame, fps), time.timescale()), fps));
+    run_seek(AVTime(time.ticks() + time.ticks(frame, reader->fps()), time.timescale()));
 }
 
 void
@@ -286,6 +294,29 @@ FlipbookPrivate::loop(bool checked)
 }
 
 void
+FlipbookPrivate::power(Platform::Power power)
+{
+    qDebug() << "sleep signal recieved, will stop playback";
+    
+    if (power == Platform::POWEROFF || power == Platform::RESTART || power == Platform::SLEEP) {
+        if (reader->is_streaming()) {
+            run_stop();
+        }
+    }
+}
+
+void
+FlipbookPrivate::stayawake(bool checked)
+{
+    if (checked) {
+        platform->stayawake(checked);
+    }
+    else {
+        platform->stayawake(checked);
+    }
+}
+
+void
 FlipbookPrivate::set_opened(const QString& filename)
 {
     if (reader->error() == AVReader::NO_ERROR) {
@@ -313,7 +344,7 @@ FlipbookPrivate::set_video(const QImage& image)
         if (title.isEmpty()) {
             title = QFileInfo(reader->filename()).fileName();
         }
-        window->setWindowTitle(QString("Flipbook: %1 (%2)").arg(title).arg(reader->time().frame(reader->fps())));
+        window->setWindowTitle(QString("Flipbook: %1").arg(title));
         ui->rhi_widget->set_image(image);
     }
     else {

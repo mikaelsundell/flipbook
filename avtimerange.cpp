@@ -58,10 +58,19 @@ AVTimeRange::bound(const AVTime& time)
 }
 
 AVTime
-AVTimeRange::bound(const AVTime& time, qreal fps)
+AVTimeRange::bound(const AVTime& time, qreal fps, bool loop)
 {
     Q_ASSERT(time.timescale() == start().timescale());
-    return AVTime(qBound(start().ticks(), time.ticks(), end().ticks() - time.tpf(fps)), time.timescale());
+    qint64 tpf = time.tpf(fps);
+    qint64 lower = start().ticks();
+    qint64 upper = end().ticks() - tpf;
+    if (loop) {
+        qint64 range = upper - lower + tpf;
+        qint64 wrapped = lower + ((time.ticks() - lower) % range + range) % range;
+        return AVTime(wrapped, time.timescale());
+    } else {
+        return AVTime(qBound(lower, time.ticks(), upper), time.timescale());
+    }
 }
 
 QString

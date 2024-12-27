@@ -28,10 +28,10 @@ class AVReaderPrivate
     public:
         void debug_time(QImage& image, AVTime time) { // todo: temporary
             QPainter painter(&image);
-            QFont font("Arial", 50, QFont::Bold);
+            QFont font("Arial", 30, QFont::Bold);
             painter.setFont(font);
             painter.setPen(QColor(Qt::white));
-            QString text = QString("AVTime: %1 / %2").arg(time.ticks()).arg(time.timescale());
+            QString text = QString("AVTime: %1 / %2 / %3").arg(time.ticks()).arg(time.timescale()).arg(time.frame(fps));
             QFontMetrics fm(font);
             int textWidth = fm.horizontalAdvance(text);
             int textHeight = fm.height();
@@ -54,6 +54,7 @@ class AVReaderPrivate
         CVSMPTETime timecode;
         AVTimeRange timerange;
         AVTime timestamp;
+        AVTime ptstamp;
         qreal fps = 0.0;
         QString filename;
         QString title;
@@ -272,9 +273,9 @@ AVReaderPrivate::read()
                  static_cast<int>(bytes),
                  QImage::Format_ARGB32);
     CVPixelBufferUnlockBaseAddress(imagebuffer, kCVPixelBufferLock_ReadOnly);
-    timestamp = AVTime::scale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)));
+    ptstamp = AVTime::scale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)));
     CFRelease(samplebuffer);
-    debug_time(image, timestamp); // todo: temporary
+    debug_time(image, ptstamp); // todo: temporary
     object->video_changed(image.copy());
 }
 
@@ -282,7 +283,7 @@ void
 AVReaderPrivate::seek(const AVTime& time)
 {
     Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
- 
+
     if (reader) {
         [reader cancelReading];
         reader = nil;
@@ -314,15 +315,15 @@ AVReaderPrivate::seek(const AVTime& time)
         return;
     }
     [reader addOutput:videooutput];
-    AVTime duration = timerange.end() - time;
-    reader.timeRange = CMTimeRangeMake(to_time(time), to_time(duration));
+    timestamp = timerange.bound(time, fps, loop);
+    AVTime duration = timerange.end() - timestamp;
+    reader.timeRange = CMTimeRangeMake(to_time(timestamp), to_time(duration));
     if (![reader startReading]) {
         error = AVReader::API_ERROR;
         errormessage = "failed to start reading after seeking";
         qWarning() << "warning: " << errormessage;
         return;
     }
-    timestamp = time;
     object->time_changed(timestamp);
 }
 
@@ -332,14 +333,17 @@ AVReaderPrivate::stream()
     streaming = true;
     object->stream_changed(streaming);
     while (streaming) {
-        seek(timestamp);
         qint64 start = timestamp.frame(fps);
         qint64 duration = timerange.duration().frame(fps);
+        timestamp.set_ticks(timestamp.ticks(start, fps)); // todo: add AVTime::align for accurate pts
+        seek(timestamp);
         for (qint64 frame = start; frame < duration; frame++) {
             if (!streaming) {
                 break;
             }
             read();
+            timestamp.set_ticks(timestamp.ticks(frame, fps));
+            Q_ASSERT("timestampa and ptstamp does not match" && timestamp == ptstamp);
             object->time_changed(timestamp);
             QThread::msleep((1 / fps) * 1000);
         }

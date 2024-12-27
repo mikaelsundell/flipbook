@@ -180,6 +180,7 @@
          <property name="font">
           <font>
            <family>Courier New</family>
+           <pointsize>11</pointsize>
            <bold>true</bold>
           </font>
          </property>
@@ -203,6 +204,7 @@
          <property name="font">
           <font>
            <family>Courier New</family>
+           <pointsize>11</pointsize>
            <bold>true</bold>
           </font>
          </property>
@@ -230,6 +232,11 @@
        </item>
        <item>
         <widget class="QSpinBox" name="fps">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="minimum">
           <number>1</number>
          </property>
@@ -238,6 +245,26 @@
          </property>
          <property name="value">
           <number>24</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="frame_10">
+         <property name="frameShape">
+          <enum>QFrame::Shape::VLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Plain</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="tool_sound">
+         <property name="text">
+          <string>on</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -406,7 +433,39 @@
           </font>
          </property>
          <property name="text">
-          <string>Ready</string>
+          <string>Ready </string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="frame_6">
+         <property name="frameShape">
+          <enum>QFrame::Shape::VLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Plain</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="stayawake">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Stay awake  </string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="frame_8">
+         <property name="frameShape">
+          <enum>QFrame::Shape::VLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Plain</enum>
          </property>
         </widget>
        </item>
@@ -472,7 +531,7 @@
      <x>0</x>
      <y>0</y>
      <width>1050</width>
-     <height>37</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
