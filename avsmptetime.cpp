@@ -28,7 +28,9 @@ class AVSmpteTimePrivate
 };
 
 AVSmpteTimePrivate::AVSmpteTimePrivate()
-: counter(0)
+: time(AVTime(0, AVFps::fps_24()))
+, fps(AVFps::fps_24())
+, counter(0)
 , hours(0)
 , minutes(0)
 , seconds(0)
