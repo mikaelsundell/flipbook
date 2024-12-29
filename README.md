@@ -20,6 +20,9 @@ https://doc.qt.io/qt-6/qtguiprivate-module.html
 * AVFoundation   
 https://developer.apple.com/documentation/avfoundation/
 
+* Apple Technotes SMPTE
+https://developer.apple.com/library/archive/technotes/tn2310/_index.html
+
 Project
 -------
 

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "avfps.h"
 #include "avmetadata.h"
 #include "avsidecar.h"
 #include "avsmptetime.h"
@@ -33,9 +34,10 @@ class AVReader : public QObject {
         QString title() const;
         AVTimeRange range() const;
         AVTime time() const;
-        qreal fps() const;
+        AVFps fps() const;
         bool loop() const;
         AVSmpteTime timecode() const;
+        AVSmpteTime offset() const;
         AVMetadata metadata();
         AVSidecar sidecar();
         AVReader::Error error() const;
@@ -43,7 +45,6 @@ class AVReader : public QObject {
     
     public Q_SLOTS:
         void set_loop(bool loop);
-    
         void seek(const AVTime& time);
         void stream();
         void stop();
@@ -51,11 +52,13 @@ class AVReader : public QObject {
     Q_SIGNALS:
         void opened(const QString& filename);
         void time_changed(const AVTime& time);
+        void timecode_changed(const AVSmpteTime& timecode);
         void range_changed(const AVTimeRange& timerange);
         void video_changed(const QImage& image);
         void audio_changed(const QByteArray& buffer);
         void loop_changed(bool looping);
         void stream_changed(bool streaming);
+        void actual_fps_changed(qreal fps);
 
     private:
         QScopedPointer<AVReaderPrivate> p;

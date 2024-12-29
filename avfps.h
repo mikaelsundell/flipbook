@@ -17,11 +17,13 @@ class AVFps
         qint32 denominator() const;
         bool drop_frame() const;
         QString to_string() const;
+        qint16 to_frame_quanta() const;
         qreal to_real() const;
         qreal to_seconds() const;
+        qreal to_fps(qint64 frame, const AVFps& other) const;
         bool valid() const;
     
-        void set_numerator(qint64 nominator);
+        void set_numerator(qint32 nominator);
         void set_denominator(qint32 denominator);
         void set_dropframe(bool dropframe);
     
@@ -32,7 +34,9 @@ class AVFps
         bool operator>(const AVFps& other) const;
         bool operator<=(const AVFps& other) const;
         bool operator>=(const AVFps& other) const;
+        operator double() const;
     
+        static AVFps guess(qreal fps);
         static AVFps fps_23_976();
         static AVFps fps_24();
         static AVFps fps_25();
@@ -43,7 +47,7 @@ class AVFps
         static AVFps fps_50();
         static AVFps fps_59_94();
         static AVFps fps_60();
-    
+
     private:
         QExplicitlySharedDataPointer<AVFpsPrivate> p;
 };

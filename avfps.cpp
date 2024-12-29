@@ -3,10 +3,14 @@
 
 #include "avfps.h"
 
+#include <QVector>
+
+#include <QDebug>
+
 class AVFpsPrivate
 {
     public:
-        qint64 numerator = 0;
+        qint32 numerator = 0;
         qint32 denominator = 0;
         bool drop_frame;
         QAtomicInt ref;
@@ -58,6 +62,12 @@ AVFps::to_string() const
     return QString("%1").arg(to_seconds());
 }
 
+qint16
+AVFps::to_frame_quanta() const
+{
+    return static_cast<qint64>(std::round(to_real()));
+}
+
 qreal
 AVFps::to_real() const
 {
@@ -70,28 +80,46 @@ AVFps::to_seconds() const
     return 1.0 / to_real();
 }
 
+qreal
+AVFps::to_fps(qint64 frame, const AVFps& other) const
+{
+    return static_cast<qint64>(std::round(frame * (to_real() / other.to_real())));
+}
+
 bool
 AVFps::valid() const {
     return p->numerator > 0;
 }
 
 void
-AVFps::set_numerator(qint64 numerator)
+AVFps::set_numerator(qint32 numerator)
 {
-    if (p->ref.loadRelaxed() > 1) {
-        p.detach();
+    if (p->numerator != numerator) {
+        if (p->ref.loadRelaxed() > 1) {
+            p.detach();
+        }
+        p->numerator = numerator;
     }
-    p->numerator = numerator;
 }
 
 void
 AVFps::set_denominator(qint32 denominator)
 {
-    if (denominator > 0) {
-        if (p->ref.loadRelaxed() > 1) {
-            p.detach();
+    if (p->denominator != denominator) {
+        if (denominator > 0) {
+            if (p->ref.loadRelaxed() > 1) {
+                p.detach();
+            }
+            p->denominator = denominator;
         }
-        p->denominator = denominator;
+    }
+}
+
+void
+AVFps::set_dropframe(bool dropframe)
+{
+    if (p->drop_frame != dropframe) {
+        p->drop_frame = dropframe;
     }
 }
 
@@ -135,6 +163,35 @@ AVFps::operator<=(const AVFps& other) const {
 bool
 AVFps::operator>=(const AVFps& other) const {
     return to_seconds() >= other.to_seconds();
+}
+
+AVFps::operator double() const
+{
+    return to_real();
+}
+
+AVFps
+AVFps::guess(qreal fps)
+{
+    const qreal epsilon = 0.002;
+    const QVector<AVFps> standards = {
+        fps_23_976(),
+        fps_24(),
+        fps_25(),
+        fps_29_97(),
+        fps_30(),
+        fps_47_952(),
+        fps_48(),
+        fps_50(),
+        fps_59_94(),
+        fps_60()
+    };
+    for (const AVFps& standard : standards) {
+        if (qAbs(standard.to_real() - fps) < epsilon) {
+            return standard;
+        }
+    }
+    return AVFps(static_cast<qint32>(fps * 1000), 1000);
 }
 
 AVFps

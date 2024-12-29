@@ -19,7 +19,7 @@ class AVTimeRange
         AVTime duration() const;
         AVTime end() const;
         AVTime bound(const AVTime& time);
-        AVTime bound(const AVTime& time, qreal fps, bool loop = false);
+        AVTime bound(const AVTime& time, const AVFps& fps, bool loop = false);
         QString to_string() const;
         bool valid() const;
     

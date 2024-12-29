@@ -21,9 +21,9 @@ class TimelinePrivate
         QPixmap paint();
         AVTime time;
         AVTimeRange range;
+        AVFps fps;
         Timeline::Units units;
         qint64 lasttick;
-        qreal fps = 0.0;
         bool tracking;
         bool pressed;
         int margin;
@@ -205,7 +205,7 @@ Timeline::time() const
     return p->time;
 }
 
-qreal
+AVFps
 Timeline::fps() const
 {
     return p->fps;
@@ -243,7 +243,7 @@ Timeline::set_time(const AVTime& time)
 }
 
 void
-Timeline::set_fps(qreal fps)
+Timeline::set_fps(const AVFps& fps)
 {
     if (p->fps != fps) {
         p->fps = fps;

@@ -48,6 +48,8 @@ class FlipbookPrivate : public QObject
         void set_video(const QImage& image);
         void set_audio(const QByteArray& buffer);
         void set_time(const AVTime& time);
+        void set_timecode(const AVSmpteTime& timecode);
+        void set_actual_fps(float fps);
         void fullscreen(bool checked);
         void loop(bool checked);
     
@@ -157,13 +159,12 @@ FlipbookPrivate::init()
     connect(reader.data(), &AVReader::video_changed, this, &FlipbookPrivate::set_video);
     connect(reader.data(), &AVReader::audio_changed, this, &FlipbookPrivate::set_audio);
     connect(reader.data(), &AVReader::time_changed, this, &FlipbookPrivate::set_time);
-    
+    connect(reader.data(), &AVReader::timecode_changed, this, &FlipbookPrivate::set_timecode);
+    connect(reader.data(), &AVReader::actual_fps_changed, this, &FlipbookPrivate::set_actual_fps);
     connect(reader.data(), &AVReader::stream_changed, ui->menu_play, &QAction::setChecked);
     connect(reader.data(), &AVReader::stream_changed, ui->tool_play, &QPushButton::setChecked);
-    
     connect(reader.data(), &AVReader::loop_changed, ui->menu_loop, &QAction::setChecked);
     connect(reader.data(), &AVReader::loop_changed, ui->tool_loop, &QPushButton::setChecked);
-
     connect(reader.data(), &AVReader::time_changed, ui->timeline, &Timeline::set_time);
     
     // platform
@@ -321,14 +322,15 @@ FlipbookPrivate::set_opened(const QString& filename)
 {
     if (reader->error() == AVReader::NO_ERROR) {
         AVTimeRange range = reader->range();
-        ui->timeline_start->setText(AVSmpteTime(range.start()).to_string());
-        ui->timeline_duration->setText(AVSmpteTime(range.end()).to_string());
+        ui->df->setChecked(reader->fps().drop_frame());
+        ui->fps->setValue(reader->fps());
+        ui->playback_widget->setEnabled(true);
+        ui->timeline_start->setText(AVSmpteTime(range.start(), reader->fps()).to_string());
+        ui->timeline_duration->setText(AVSmpteTime(range.end(), reader->fps()).to_string());
         ui->timeline->set_time(reader->time());
         ui->timeline->set_range(reader->range());
         ui->timeline->set_fps(reader->fps());
         ui->timeline->setEnabled(true);
-        ui->fps->setValue(reader->fps());
-        ui->playback_widget->setEnabled(true);
     }
     else {
         ui->status->setText(reader->error_message());
@@ -368,8 +370,24 @@ FlipbookPrivate::set_audio(const QByteArray& buffer)
 void
 FlipbookPrivate::set_time(const AVTime& time)
 {
-    ui->timecode->setText(AVSmpteTime(time).to_string());
     ui->frame->setText(QString("%1").arg(time.frame(reader->fps()), 4, 10, QChar('0')));
+}
+
+void
+FlipbookPrivate::set_timecode(const AVSmpteTime& timecode)
+{
+    ui->timecode->setText(timecode.to_string());
+}
+
+void
+FlipbookPrivate::set_actual_fps(float fps)
+{
+    if (fps < reader->fps()) {
+        ui->actual_fps->setText(QString("*Actual: %1").arg(QString::number(fps, 'f', 0)));
+    }
+    else {
+        ui->actual_fps->setText(QString("Actual: %1").arg(QString::number(fps, 'f', 0)));
+    }
 }
 
 #include "flipbook.moc"

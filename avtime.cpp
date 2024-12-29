@@ -7,7 +7,7 @@ class AVTimePrivate
 {
     public:
         qint64 ticks = 0;
-        qint32 timescale = 1;
+        qint32 timescale = 24000;
         QAtomicInt ref;
         qreal to_seconds() const {
             return static_cast<qreal>(ticks) / timescale;
@@ -26,6 +26,12 @@ AVTime::AVTime(qint64 ticks, qint32 timescale)
     p->timescale = timescale;
 }
 
+AVTime::AVTime(qint64 frame, const AVFps& fps)
+: p(new AVTimePrivate())
+{
+    p->ticks = ticks(frame, fps);
+}
+
 AVTime::AVTime(const AVTime& other)
 : p(other.p)
 {
@@ -42,13 +48,13 @@ AVTime::ticks() const
 }
 
 qint64
-AVTime::ticks(qreal fps) const
+AVTime::ticks(const AVFps& fps) const
 {
     return p->ticks - tpf(fps);
 }
 
 qint64
-AVTime::ticks(qint64 frame, qreal fps) const
+AVTime::ticks(qint64 frame, const AVFps& fps) const
 {
     return static_cast<qint64>(frame * tpf(fps));
 }
@@ -60,13 +66,13 @@ AVTime::timescale() const
 }
 
 qint64
-AVTime::tpf(qreal fps) const
+AVTime::tpf(const AVFps& fps) const
 {
-    return static_cast<qint64>(std::floor(static_cast<qreal>(timescale()) / fps));
+    return static_cast<qint64>(std::round(static_cast<qreal>(timescale()) / fps.to_real()));
 }
 
 qint64
-AVTime::frame(qreal fps) const
+AVTime::frame(const AVFps& fps) const
 {
     return static_cast<qint64>(ticks() / tpf(fps));
 }
@@ -99,10 +105,12 @@ AVTime::valid() const {
 void
 AVTime::set_ticks(qint64 ticks)
 {
-    if (p->ref.loadRelaxed() > 1) {
-        p.detach();
+    if (p->ticks != ticks) {
+        if (p->ref.loadRelaxed() > 1) {
+            p.detach();
+        }
+        p->ticks = ticks;
     }
-    p->ticks = ticks;
 }
 
 void

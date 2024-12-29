@@ -58,7 +58,7 @@ AVTimeRange::bound(const AVTime& time)
 }
 
 AVTime
-AVTimeRange::bound(const AVTime& time, qreal fps, bool loop)
+AVTimeRange::bound(const AVTime& time, const AVFps& fps, bool loop)
 {
     Q_ASSERT(time.timescale() == start().timescale());
     qint64 tpf = time.tpf(fps);

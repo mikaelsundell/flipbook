@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "avfps.h"
+
 #include <QExplicitlySharedDataPointer>
 
 class AVTimePrivate;
@@ -11,14 +13,15 @@ class AVTime
     public:
         AVTime();
         AVTime(qint64 ticks, qint32 timescale);
+        AVTime(qint64 frame, const AVFps& fps);
         AVTime(const AVTime& other);
         ~AVTime();
         qint64 ticks() const;
-        qint64 ticks(qreal fps) const;
-        qint64 ticks(qint64 frame, qreal fps) const;
+        qint64 ticks(const AVFps& fps) const;
+        qint64 ticks(qint64 frame, const AVFps& fps) const;
         qint32 timescale() const;
-        qint64 tpf(qreal fps) const;
-        qint64 frame(qreal fps) const;
+        qint64 tpf(const AVFps& fps) const;
+        qint64 frame(const AVFps& fps) const;
         QString to_string() const;
         bool valid() const;
     

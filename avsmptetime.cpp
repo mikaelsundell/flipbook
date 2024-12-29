@@ -3,46 +3,139 @@
 
 #include "avsmptetime.h"
 
+#include <QDebug>
+
 class AVSmpteTimePrivate
 {
     public:
-        quint32 counter = 0;
-        quint32 type = 0;
-        qint16 hours = 0;
-        qint16 minutes = 0;
-        qint16 seconds = 0;
-        qint16 frames = 0;
-        qint16 subframes = 1;
-        qint16 subframedivisor = 0;
+        AVSmpteTimePrivate();
+        qint64 frame() const;
+        void update();
+    
+    public:
+        AVTime time;
+        AVFps fps;
+        quint32 counter;
+        qint16 hours;
+        qint16 minutes;
+        qint16 seconds;
+        qint16 frames;
+        qint16 subframes;
+        qint16 subframe_divisor;
+        bool allow_negatives;
+        bool max_24hours;
         QAtomicInt ref;
 };
+
+AVSmpteTimePrivate::AVSmpteTimePrivate()
+: counter(0)
+, hours(0)
+, minutes(0)
+, seconds(0)
+, frames(0)
+, subframes(1)
+, subframe_divisor(0)
+, allow_negatives(true)
+, max_24hours(true)
+{
+}
+
+qint64
+AVSmpteTimePrivate::frame() const
+{
+    Q_ASSERT("time is not valid" && time.valid());
+    Q_ASSERT("fps is not valid" && fps.valid());
+    
+    int64_t frame = 0;
+    qint16 framequanta = fps.to_frame_quanta();
+    
+    frame = frames;
+    frame += seconds * framequanta;
+    frame += (minutes & ~0x80) * framequanta * 60; // 0x80 negative bit in minutes
+    frame += hours * framequanta * 60 * 60;
+    int64_t fpm = framequanta * 60;
+    
+    if (fps.drop_frame()) {
+        int64_t fpm10 = fpm * 10;
+        int64_t num10s = frame / fpm10;
+        int64_t frameadjust = -num10s*(9 * 2);
+        int64_t framesleft = frame % fpm10;
+        
+        if (framesleft > 1) {
+            int64_t num1s = framesleft / fpm;
+            if (num1s > 0) {
+                frameadjust -= (num1s-1) * 2;
+                framesleft = framesleft % fpm;
+                if (framesleft > 1) {
+                    frameadjust -= 2;
+                }
+                else {
+                    frameadjust -= (framesleft+1);
+                }
+            }
+        }
+        frame += frameadjust;
+    }
+    if (minutes & 0x80) // check for negative bit
+        frame = -frame;
+    return frame;
+}
+
+void
+AVSmpteTimePrivate::update()
+{
+    Q_ASSERT("time is not valid" && time.valid());
+    Q_ASSERT("fps is not valid" && fps.valid());
+    
+    qint64 frame = time.frame(fps);
+    qint16 framequanta = fps.to_frame_quanta();
+    bool is_negative = false;
+    if (frame < 0) {
+        is_negative = true;
+        frame = -frame;
+    }
+    if (fps.drop_frame()) {
+        
+        qint64 fpm = framequanta * 60 - 2;
+        qint64 fpm10 = framequanta * 10 * 60 - 9 * 2;
+        qint64 num10s = frame / fpm10;
+        qint64 frameadjust = num10s*(9 * 2);
+        qint64 framesleft = frame % fpm10;
+        if (framesleft >= fps * 60) {
+            framesleft -= fps * 60;
+            int64_t num1s = framesleft / fpm;
+            frameadjust += (num1s + 1) * 2;
+        }
+        frame += frameadjust;
+    }
+    frames = frame % framequanta;
+    frame /= fps;
+    seconds =  frame % 60;
+    frame /= 60;
+    minutes = frame % 60;
+    frame /= 60;
+    if (max_24hours) {
+        frame %= 24;
+        if (is_negative && !allow_negatives) {
+            is_negative = false;
+            frame = 23 - frame;
+        }
+    }
+    hours = frame;
+    if (is_negative) {
+        minutes |= 0x80; // indicate negative number
+    }
+}
     
 AVSmpteTime::AVSmpteTime()
 : p(new AVSmpteTimePrivate())
 {
 }
 
-AVSmpteTime::AVSmpteTime(const AVTime& other)
+AVSmpteTime::AVSmpteTime(const AVTime& time, const AVFps& fps)
 : p(new AVSmpteTimePrivate())
 {
-    if (other.valid() && other.ticks() > 0) {
-        qint64 totalframes = other.ticks() / other.timescale();
-        p->hours = totalframes / 3600;
-        totalframes %= 3600;
-        p->minutes = totalframes / 60;
-        totalframes %= 60;
-        p->seconds = totalframes;
-        p->frames = (other.ticks() % other.timescale()) / (other.timescale() / 24);
-        p->subframes = 0;
-        p->subframedivisor = 1;
-    } else {
-        p->hours = 0;
-        p->minutes = 0;
-        p->seconds = 0;
-        p->frames = 0;
-        p->subframes = 0;
-        p->subframedivisor = 1;
-    }
+    set_time(time, fps);
 }
 
 AVSmpteTime::AVSmpteTime(const AVSmpteTime& other)
@@ -58,12 +151,6 @@ quint32
 AVSmpteTime::counter() const
 {
     return p->counter;
-}
-
-quint32
-AVSmpteTime::type() const
-{
-    return p->type;
 }
 
 qint16
@@ -97,9 +184,21 @@ AVSmpteTime::subframes() const
 }
 
 qint16
-AVSmpteTime::subframedivisor() const
+AVSmpteTime::subframe_divisor() const
 {
-    return p->subframedivisor;
+    return p->subframe_divisor;
+}
+
+qint64
+AVSmpteTime::frame() const
+{
+    return p->frame();
+}
+
+bool
+AVSmpteTime::allow_negatives() const
+{
+    return p->allow_negatives;
 }
 
 void
@@ -109,15 +208,6 @@ AVSmpteTime::set_counter(quint32 counter)
         p.detach();
     }
     p->counter = counter;
-}
-
-void
-AVSmpteTime::set_type(quint32 type)
-{
-    if (p->ref.loadRelaxed() > 1) {
-        p.detach();
-    }
-    p->type = type;
 }
 
 void
@@ -166,18 +256,60 @@ AVSmpteTime::set_subframes(qint16 subframes)
 }
 
 void
-AVSmpteTime::set_subframedivisor(qint16 subframedivisor)
+AVSmpteTime::set_subframe_divisor(qint16 subframe_divisor)
 {
     if (p->ref.loadRelaxed() > 1) {
         p.detach();
     }
-    p->subframedivisor = subframedivisor;
+    p->subframe_divisor = subframe_divisor;
+}
+
+void
+AVSmpteTime::set_time(const AVTime& time, const AVFps& fps)
+{
+    if (p->ref.loadRelaxed() > 1) {
+        p.detach();
+    }
+    p->time = time;
+    p->fps = fps;
+    p->update();
+}
+
+void
+AVSmpteTime::set_allow_negatives(bool allow_negatives)
+{
+    if (p->allow_negatives != allow_negatives) {
+        if (p->ref.loadRelaxed() > 1) {
+            p.detach();
+        }
+        p->allow_negatives = allow_negatives;
+        p->update();
+    }
+}
+
+void
+AVSmpteTime::set_max24hours(bool max_24hours)
+{
+    if (p->max_24hours != max_24hours) {
+        if (p->ref.loadRelaxed() > 1) {
+            p.detach();
+        }
+        p->max_24hours = max_24hours;
+        p->update();
+    }
 }
 
 QString
 AVSmpteTime::to_string() const
 {
-    return QString("%1:%2:%3:%4")
+    QString text;
+    if (p->fps.drop_frame()) {
+        text = "%1:%2:%3.%4"; // use . for drop frames
+    }
+    else {
+        text = "%1:%2:%3:%4";
+    }
+    return QString(text)
         .arg(p->hours, 2, 10, QChar('0'))
         .arg(p->minutes, 2, 10, QChar('0'))
         .arg(p->seconds, 2, 10, QChar('0'))
@@ -187,12 +319,7 @@ AVSmpteTime::to_string() const
 AVTime
 AVSmpteTime::to_time() const
 {
-    if (!valid()) {
-        return AVTime();
-    }
-    qint64 totalFrames = (p->hours * 3600 + p->minutes * 60 + p->seconds) * p->subframedivisor + p->frames;
-    qint64 totalTimeUnits = totalFrames * p->subframes; // assume subframes represent the smallest unit
-    return AVTime(totalTimeUnits, p->subframedivisor);
+    return(AVTime(frame(), p->fps));
 }
 
 bool
@@ -201,7 +328,7 @@ AVSmpteTime::valid() const {
         p->minutes >= 0 && p->minutes < 60 &&
         p->seconds >= 0 && p->seconds < 60 &&
         p->frames >= 0 && p->subframes >= 0 &&
-        p->subframedivisor > 0;
+        p->subframe_divisor > 0;
 }
 
 AVSmpteTime&
@@ -217,13 +344,12 @@ bool
 AVSmpteTime::operator==(const AVSmpteTime& other) const
 {
     return p->counter == other.p->counter &&
-        p->type == other.p->type &&
         p->hours == other.p->hours &&
         p->minutes == other.p->minutes &&
         p->seconds == other.p->seconds &&
         p->frames == other.p->frames &&
         p->subframes == other.p->subframes &&
-        p->subframedivisor == other.p->subframedivisor;
+        p->subframe_divisor == other.p->subframe_divisor;
 }
 
 bool
@@ -232,7 +358,36 @@ AVSmpteTime::operator!=(const AVSmpteTime& other) const
     return !(*this == other);
 }
 
+bool
+AVSmpteTime::operator<(const AVSmpteTime& other) const {
+    return this->frame() < other.frame();
+}
 
+bool
+AVSmpteTime::operator>(const AVSmpteTime& other) const {
+    return this->frame() > other.frame();
+}
 
+bool
+AVSmpteTime::operator<=(const AVSmpteTime& other) const {
+    return this->frame() <= other.frame();
+}
 
+bool
+AVSmpteTime::operator>=(const AVSmpteTime& other) const {
+    return this->frame() >= other.frame();
+}
 
+AVSmpteTime
+AVSmpteTime::operator+(const AVSmpteTime& other) const {
+    qint64 totalframes = this->frame() + other.frame();
+    AVTime time = AVTime(totalframes, p->fps);
+    return AVSmpteTime(time, p->fps);
+}
+
+AVSmpteTime
+AVSmpteTime::operator-(const AVSmpteTime& other) const {
+    qint64 totalframes = this->frame() - other.frame();
+    AVTime time = AVTime(totalframes, p->fps);
+    return AVSmpteTime(time, p->fps);
+}
