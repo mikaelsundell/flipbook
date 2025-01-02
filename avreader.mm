@@ -2,9 +2,11 @@
 // Copyright (c) 2022 - present Mikael Sundell.
 
 #include "avreader.h"
+#include "avtimer.h"
 
 #include <AVFoundation/AVFoundation.h>
 #include <CoreMedia/CoreMedia.h>
+#include <mach/mach_time.h>
 
 #include <QPainter>
 #include <QPointer>
@@ -102,7 +104,6 @@ AVReaderPrivate::open()
         qWarning() << "warning: " << errormessage;
         return false;
     }
-
     NSArray<NSString *>* metadataformats = @[
         AVMetadataKeySpaceCommon,
         AVMetadataFormatQuickTimeUserData,
@@ -123,7 +124,6 @@ AVReaderPrivate::open()
         AVMetadataKeySpaceAudioFile,
         AVMetadataFormatUnknown
     ];
-    
     for (NSString *format in metadataformats) {
         NSArray<AVMetadataItem *> *metadataForFormat = [asset metadataForFormat:format];
         if (metadataForFormat) {
@@ -352,40 +352,40 @@ AVReaderPrivate::stream()
 {
     streaming = true;
     object->stream_changed(streaming);
-    qint64 total = 0;
-    QElapsedTimer actualtimer;
+    QThread::currentThread()->setPriority(QThread::TimeCriticalPriority);
+    qint64 frames = 0;
+    AVTimer actualtimer;
     actualtimer.start();
     
     while (streaming) {
         qint64 start = timestamp.frame(fps);
         qint64 duration = timerange.duration().frame(fps);
-        timestamp.set_ticks(timestamp.ticks(start, fps)); // todo: add AVTime::align for accurate pts
+        timestamp.set_ticks(timestamp.ticks(start, fps)); // todo: add AVTime::align for frame alignment
         seek(timestamp);
-        QElapsedTimer timer;
+        
+        AVTimer frametimer(fps);
+        frametimer.start();
         for (qint64 frame = start; frame < duration; frame++) {
             if (!streaming) {
                 break;
             }
-            timer.start();
+            quint64 currenttime = frametimer.elapsed();
             read();
             timestamp.set_ticks(timestamp.ticks(frame, fps));
             Q_ASSERT("timestamp and ptstamp does not match" && timestamp == ptstamp);
             object->time_changed(timestamp);
             object->timecode_changed(object->timecode());
-            total++;
+            frames++;
             
-            qint64 elapsed = timer.elapsed();
-            qint64 interval = static_cast<qint64>((1.0 / fps) * 1000);
-            qint64 sleep = interval - elapsed;
-            if (sleep > 0) {
-                QThread::msleep(sleep);
-            } else {
-                qWarning() << "frame processing exceeded frame interval, consider frame drop to keep fps ="
-                           << elapsed << "ms, Interval =" << interval << "ms";
+            frametimer.wait();
+            while (!frametimer.next()) {
+                frame++;
             }
-            if (total % 10 == 0) {
-                qreal actualfps = total / (actualtimer.elapsed() / 1000.0);
+            if (frames % 10 == 0) {
+                qreal actualfps = frames / AVTimer::convert(actualtimer.elapsed(), AVTimer::Unit::SECONDS);
                 object->actual_fps_changed(actualfps);
+                actualtimer.restart();
+                frames = 0;
             }
         }
         if (!loop || !streaming) {
@@ -395,8 +395,9 @@ AVReaderPrivate::stream()
     }
     streaming = false;
     object->stream_changed(streaming);
+    QThread::currentThread()->setPriority(QThread::NormalPriority);
 }
-                       
+
 CMTime
 AVReaderPrivate::to_time(const AVTime& other) {
    return CMTimeMakeWithEpoch(other.ticks(), other.timescale(), 0); // default epoch and flags

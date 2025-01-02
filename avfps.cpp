@@ -11,7 +11,7 @@ class AVFpsPrivate
 {
     public:
         qint32 numerator = 0;
-        qint32 denominator = 0;
+        qint32 denominator = 1;
         bool drop_frame;
         QAtomicInt ref;
 };

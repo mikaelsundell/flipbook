@@ -23,6 +23,9 @@ https://developer.apple.com/documentation/avfoundation/
 * Apple Technotes SMPTE
 https://developer.apple.com/library/archive/technotes/tn2310/_index.html
 
+* Apple Mach Absolute Time Units
+https://developer.apple.com/library/archive/qa/qa1398/_index.html
+
 Project
 -------
 

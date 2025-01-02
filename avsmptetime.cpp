@@ -137,7 +137,9 @@ AVSmpteTime::AVSmpteTime()
 AVSmpteTime::AVSmpteTime(const AVTime& time, const AVFps& fps)
 : p(new AVSmpteTimePrivate())
 {
-    set_time(time, fps);
+    p->time = time;
+    p->fps = fps;
+    p->update();
 }
 
 AVSmpteTime::AVSmpteTime(const AVSmpteTime& other)

@@ -34,6 +34,8 @@ set (app_sources
     avtime.cpp
     avtimerange.h
     avtimerange.cpp
+    avtimer.h
+    avtimer.mm
     flipbook.h
     flipbook.cpp
     main.cpp
@@ -41,6 +43,8 @@ set (app_sources
     platform.mm
     rhiwidget.h
     rhiwidget.cpp
+    test.h
+    test.cpp
     timeline.h
     timeline.cpp
     flipbook.ui

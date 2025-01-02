@@ -31,6 +31,7 @@ class FlipbookPrivate : public QObject
     public:
         FlipbookPrivate();
         void init();
+        bool eventFilter(QObject* object, QEvent* event);
     
     public Q_SLOTS:
         void open();
@@ -124,10 +125,9 @@ FlipbookPrivate::init()
     ui.reset(new Ui_Flipbook());
     ui->setupUi(window.data());
     window->setFocus();
-    
+    window->installEventFilter(this);
     // reader
     reader.reset(new AVReader());
-    
     // connect
     connect(ui->menu_open, &QAction::triggered, this, &FlipbookPrivate::open);
     connect(ui->menu_start, &QAction::triggered, this, &FlipbookPrivate::seek_start);
@@ -137,7 +137,6 @@ FlipbookPrivate::init()
     connect(ui->menu_end, &QAction::triggered, this, &FlipbookPrivate::seek_end);
     connect(ui->menu_loop, &QAction::triggered, this, &FlipbookPrivate::loop);
     connect(ui->menu_fullscreen, &QAction::triggered, this, &FlipbookPrivate::fullscreen);
-    
     connect(ui->tool_open, &QPushButton::pressed, this, &FlipbookPrivate::open);
     connect(ui->tool_start, &QPushButton::pressed, this, &FlipbookPrivate::seek_start);
     connect(ui->tool_previous, &QPushButton::pressed, this, &FlipbookPrivate::seek_previous);
@@ -146,14 +145,11 @@ FlipbookPrivate::init()
     connect(ui->tool_end, &QPushButton::pressed, this, &FlipbookPrivate::seek_end);
     connect(ui->tool_loop, &QPushButton::toggled, this, &FlipbookPrivate::loop);
     connect(ui->tool_fullscreen, &QPushButton::toggled, this, &FlipbookPrivate::fullscreen);
-    
     // timeline
     connect(ui->timeline, &Timeline::slider_pressed, this, &FlipbookPrivate::stop);
     connect(ui->timeline, &Timeline::slider_moved, this, &FlipbookPrivate::seek_time);
-    
     // status
     connect(ui->stayawake, &QCheckBox::clicked, this, &FlipbookPrivate::stayawake);
-    
     // reader
     connect(reader.data(), &AVReader::opened, this, &FlipbookPrivate::set_opened);
     connect(reader.data(), &AVReader::video_changed, this, &FlipbookPrivate::set_video);
@@ -166,9 +162,20 @@ FlipbookPrivate::init()
     connect(reader.data(), &AVReader::loop_changed, ui->menu_loop, &QAction::setChecked);
     connect(reader.data(), &AVReader::loop_changed, ui->tool_loop, &QPushButton::setChecked);
     connect(reader.data(), &AVReader::time_changed, ui->timeline, &Timeline::set_time);
-    
     // platform
     connect(platform.data(), &Platform::power_changed, this, &FlipbookPrivate::power);
+}
+
+bool
+FlipbookPrivate::eventFilter(QObject* object, QEvent* event)
+{
+    if (event->type() == QEvent::Close) {
+        if (reader->is_streaming()) {
+            stop();
+        }
+        return true;
+    }
+    return QObject::eventFilter(object, event);
 }
 
 void
@@ -383,10 +390,10 @@ void
 FlipbookPrivate::set_actual_fps(float fps)
 {
     if (fps < reader->fps()) {
-        ui->actual_fps->setText(QString("*Actual: %1").arg(QString::number(fps, 'f', 0)));
+        ui->actual_fps->setText(QString("*FPS: %1").arg(QString::number(fps, 'f', 3)));
     }
     else {
-        ui->actual_fps->setText(QString("Actual: %1").arg(QString::number(fps, 'f', 0)));
+        ui->actual_fps->setText(QString("FPS: %1").arg(QString::number(fps, 'f', 3)));
     }
 }
 

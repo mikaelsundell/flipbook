@@ -8,6 +8,9 @@
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #import <IOKit/IOMessage.h>
 
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+
 #include <QPointer>
 
 #include <QDebug>

@@ -282,11 +282,13 @@
          </property>
          <property name="font">
           <font>
+           <family>Courier New</family>
            <pointsize>11</pointsize>
+           <bold>true</bold>
           </font>
          </property>
          <property name="text">
-          <string>Actual: 24</string>
+          <string>FPS: 24</string>
          </property>
         </widget>
        </item>
