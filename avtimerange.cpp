@@ -54,22 +54,22 @@ AVTime
 AVTimeRange::bound(const AVTime& time)
 {
     Q_ASSERT(time.timescale() == start().timescale());
-    return AVTime(qBound(start().ticks(), time.ticks(), end().ticks()), time.timescale());
+    return AVTime(qBound(start().ticks(), time.ticks(), end().ticks()), time.timescale(), time.fps());
 }
 
 AVTime
-AVTimeRange::bound(const AVTime& time, const AVFps& fps, bool loop)
+AVTimeRange::bound(const AVTime& time, bool loop)
 {
     Q_ASSERT(time.timescale() == start().timescale());
-    qint64 tpf = time.tpf(fps);
+    qint64 tpf = time.tpf();
     qint64 lower = start().ticks();
     qint64 upper = end().ticks() - tpf;
     if (loop) {
         qint64 range = upper - lower + tpf;
         qint64 wrapped = lower + ((time.ticks() - lower) % range + range) % range;
-        return AVTime(wrapped, time.timescale());
+        return AVTime(wrapped, time.timescale(), time.fps());
     } else {
-        return AVTime(qBound(lower, time.ticks(), upper), time.timescale());
+        return AVTime(qBound(lower, time.ticks(), upper), time.timescale(), time.fps());
     }
 }
 

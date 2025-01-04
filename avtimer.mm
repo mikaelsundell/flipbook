@@ -73,7 +73,7 @@ AVTimer::~AVTimer()
 void
 AVTimer::start()
 {
-    Q_ASSERT("fps is zero" && p->fps.to_seconds() > 0);
+    Q_ASSERT("fps is zero" && p->fps.seconds() > 0);
     p->starttime = mach_absolute_time();
     p->nexttime = p->starttime + p->to_ticks(p->to_nano(p->fps));
     p->stoptime = 0;

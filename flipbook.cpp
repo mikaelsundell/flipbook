@@ -77,7 +77,7 @@ class FlipbookPrivate : public QObject
                 });
             }
             else {
-                qWarning() << "could not seek reader at time: " << time.to_string() << ", ticks, " << time.ticks() << ", frame: " << time.frame(reader->fps()) << ", thread already running";
+                qWarning() << "could not seek reader at time: " << time.to_string() << ", ticks, " << time.ticks() << ", frame: " << time.frames() << ", thread already running";
             }
         }
         void run_stream() {
@@ -237,7 +237,7 @@ void
 FlipbookPrivate::seek_frame(qint64 frame)
 {
     AVTime time = reader->time();
-    run_seek(AVTime(time.ticks() + time.ticks(frame, reader->fps()), time.timescale()));
+    run_seek(AVTime(time.ticks() + time.ticks(frame), time.timescale(), time.fps()));
 }
 
 void
@@ -332,8 +332,8 @@ FlipbookPrivate::set_opened(const QString& filename)
         ui->df->setChecked(reader->fps().drop_frame());
         ui->fps->setValue(reader->fps());
         ui->playback_widget->setEnabled(true);
-        ui->timeline_start->setText(AVSmpteTime(range.start(), reader->fps()).to_string());
-        ui->timeline_duration->setText(AVSmpteTime(range.end(), reader->fps()).to_string());
+        ui->timeline_start->setText(AVSmpteTime(range.start()).to_string());
+        ui->timeline_duration->setText(AVSmpteTime(range.end()).to_string());
         ui->timeline->set_time(reader->time());
         ui->timeline->set_range(reader->range());
         ui->timeline->set_fps(reader->fps());
@@ -377,7 +377,7 @@ FlipbookPrivate::set_audio(const QByteArray& buffer)
 void
 FlipbookPrivate::set_time(const AVTime& time)
 {
-    ui->frame->setText(QString("%1").arg(time.frame(reader->fps()), 4, 10, QChar('0')));
+    ui->frame->setText(QString("%1").arg(time.frames(), 4, 10, QChar('0')));
 }
 
 void
@@ -390,10 +390,10 @@ void
 FlipbookPrivate::set_actual_fps(float fps)
 {
     if (fps < reader->fps()) {
-        ui->actual_fps->setText(QString("*FPS: %1").arg(QString::number(fps, 'f', 3)));
+        ui->actual_fps->setText(QString("*%1").arg(QString::number(fps, 'f', 3)));
     }
     else {
-        ui->actual_fps->setText(QString("FPS: %1").arg(QString::number(fps, 'f', 3)));
+        ui->actual_fps->setText(QString("%1").arg(QString::number(fps, 'f', 3)));
     }
 }
 

@@ -93,7 +93,7 @@ TimelinePrivate::paint()
             int x = to_pos(tick);
             p.drawLine(x, y - 4, x, y + 4);
             //QString text = QString("%1/%2").arg(QString::number(tick)).arg(AVTime(tick, time.timescale()).frames(fps));
-            QString text = QString("%1").arg(AVTime(tick, time.timescale()).frame(fps));
+            QString text = QString("%1").arg(AVTime(tick, time.timescale(), time.fps()).frames());
             
             QFontMetrics metrics(font);
             int width = metrics.horizontalAdvance(text);
@@ -118,7 +118,7 @@ TimelinePrivate::paint()
             p.setPen(thickPen);
             p.drawLine(pos, y - 4, pos, y + 4);
             //QString text = QString("%1/%2").arg(QString::number(duration)).arg(AVTime(duration, time.timescale()).frames(fps));
-            QString text = QString("%1").arg(AVTime(duration, time.timescale()).frame(fps));
+            QString text = QString("%1").arg(AVTime(duration, time.timescale(), time.fps()).frames());
             
             QFontMetrics metrics(font);
             int width = metrics.horizontalAdvance(text);
@@ -152,7 +152,7 @@ TimelinePrivate::paint()
         //}
         //else {
             int pos = 0;
-            AVTime next = AVTime(ticks + time.tpf(fps), time.timescale());
+            AVTime next = AVTime(ticks + time.tpf(), time.timescale(), time.fps());
             if (next.ticks() < duration) {
                 pos = to_pos(next.ticks());
                 p.setPen(QPen(Qt::red, 2));

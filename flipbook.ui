@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1118</width>
+    <width>1135</width>
     <height>600</height>
    </rect>
   </property>
@@ -177,6 +177,12 @@
        </item>
        <item>
         <widget class="QLabel" name="timecode">
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>0</height>
+          </size>
+         </property>
          <property name="font">
           <font>
            <family>Courier New</family>
@@ -276,7 +282,7 @@
         <widget class="QLabel" name="actual_fps">
          <property name="minimumSize">
           <size>
-           <width>60</width>
+           <width>50</width>
            <height>0</height>
           </size>
          </property>
@@ -288,7 +294,7 @@
           </font>
          </property>
          <property name="text">
-          <string>FPS: 24</string>
+          <string>0</string>
          </property>
         </widget>
        </item>
@@ -574,7 +580,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1118</width>
+     <width>1135</width>
      <height>37</height>
     </rect>
    </property>

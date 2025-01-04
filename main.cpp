@@ -10,13 +10,13 @@
 int
 main(int argc, char* argv[])
 {
-    if (0) { // type tests
+    if (1) { // type tests
         test_time();
         test_timerange();
         test_fps();
         test_smpte();
     }
-    if (0) { // timer tests
+    if (1) { // timer tests
         test_timer();
     }
     QApplication app(argc, argv);

@@ -56,34 +56,36 @@ AVFps::drop_frame() const
     return p->drop_frame;
 }
 
-QString
-AVFps::to_string() const
-{
-    return QString("%1").arg(to_seconds());
-}
+
 
 qint16
-AVFps::to_frame_quanta() const
+AVFps::frame_quanta() const
 {
-    return static_cast<qint64>(std::round(to_real()));
+    return static_cast<qint64>(std::round(real()));
 }
 
 qreal
-AVFps::to_real() const
+AVFps::real() const
 {
     return static_cast<qreal>(numerator()) / denominator();
 }
 
 qreal
-AVFps::to_seconds() const
+AVFps::seconds() const
 {
-    return 1.0 / to_real();
+    return 1.0 / real();
 }
 
 qreal
 AVFps::to_fps(qint64 frame, const AVFps& other) const
 {
-    return static_cast<qint64>(std::round(frame * (to_real() / other.to_real())));
+    return static_cast<qint64>(std::round(frame * (real() / other.real())));
+}
+
+QString
+AVFps::to_string() const
+{
+    return QString("%1").arg(seconds());
 }
 
 bool
@@ -147,27 +149,27 @@ AVFps::operator!=(const AVFps& other) const {
 
 bool
 AVFps::operator<(const AVFps& other) const {
-    return to_seconds() < other.to_seconds();
+    return seconds() < other.seconds();
 }
 
 bool
 AVFps::operator>(const AVFps& other) const {
-    return to_seconds() > other.to_seconds();
+    return seconds() > other.seconds();
 }
 
 bool
 AVFps::operator<=(const AVFps& other) const {
-    return to_seconds() <= other.to_seconds();
+    return seconds() <= other.seconds();
 }
 
 bool
 AVFps::operator>=(const AVFps& other) const {
-    return to_seconds() >= other.to_seconds();
+    return seconds() >= other.seconds();
 }
 
 AVFps::operator double() const
 {
-    return to_real();
+    return real();
 }
 
 AVFps
@@ -187,7 +189,7 @@ AVFps::guess(qreal fps)
         fps_60()
     };
     for (const AVFps& standard : standards) {
-        if (qAbs(standard.to_real() - fps) < epsilon) {
+        if (qAbs(standard.real() - fps) < epsilon) {
             return standard;
         }
     }
@@ -252,4 +254,10 @@ AVFps
 AVFps::fps_60()
 {
     return AVFps(60, 1);
+}
+
+qint64
+AVFps::convert(quint64 value, const AVFps& from, const AVFps& to)
+{
+    return value * (to / from);
 }

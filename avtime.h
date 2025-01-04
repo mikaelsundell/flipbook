@@ -12,21 +12,24 @@ class AVTime
 {
     public:
         AVTime();
-        AVTime(qint64 ticks, qint32 timescale);
+        AVTime(qint64 ticks, qint32 timescale, const AVFps& fps);
         AVTime(qint64 frame, const AVFps& fps);
+        AVTime(const AVTime& other, const AVFps& fps);
         AVTime(const AVTime& other);
         ~AVTime();
+        AVFps fps() const;
         qint64 ticks() const;
-        qint64 ticks(const AVFps& fps) const;
-        qint64 ticks(qint64 frame, const AVFps& fps) const;
+        qint64 ticks(qint64 frame) const;
         qint32 timescale() const;
-        qint64 tpf(const AVFps& fps) const;
-        qint64 frame(const AVFps& fps) const;
+        qint64 tpf() const;
+        qint64 frames() const;
+        qreal seconds() const;
         QString to_string() const;
         bool valid() const;
     
         void set_ticks(qint64 ticks);
         void set_timescale(qint32 timescale);
+        void set_fps(const AVFps& fps);
     
         AVTime& operator=(const AVTime& other);
         bool operator==(const AVTime& other) const;
@@ -38,6 +41,7 @@ class AVTime
         AVTime operator+(const AVTime& other) const;
         AVTime operator-(const AVTime& other) const;
     
+        static AVTime convert(const AVTime& time, const AVFps& from, const AVFps& to);
         static AVTime scale(AVTime time, qint32 timescale = 24000);
 
     private:

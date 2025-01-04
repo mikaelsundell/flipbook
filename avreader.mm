@@ -33,7 +33,7 @@ class AVReaderPrivate
             QFont font("Arial", 30, QFont::Bold);
             painter.setFont(font);
             painter.setPen(QColor(Qt::white));
-            QString text = QString("AVTime: %1 / %2 / %3").arg(time.ticks()).arg(time.timescale()).arg(time.frame(fps));
+            QString text = QString("AVTime: %1 / %2 / %3").arg(time.ticks()).arg(time.timescale()).arg(time.frames());
             QFontMetrics fm(font);
             int textWidth = fm.horizontalAdvance(text);
             int textHeight = fm.height();
@@ -43,13 +43,12 @@ class AVReaderPrivate
         }
         AVSmpteTime timecode() const
         {
-            return startcode + AVSmpteTime(timestamp, fps);
+            return AVSmpteTime(timestamp) + startcode;
         }
         CMTime to_time(const AVTime& other);
         CMTimeRange to_timerange(const AVTimeRange& other);
         AVTime to_time(const CMTime& other);
         AVTimeRange to_timerange(const CMTimeRange& other);
-        AVSmpteTime to_timecode(const CVSMPTETime& other);
         AVAsset* asset = nil;
         AVAssetReader* reader = nil;
         AVAssetReaderTrackOutput* videooutput = nil;
@@ -177,7 +176,7 @@ AVReaderPrivate::open()
                         uint32_t flags = CMTimeCodeFormatDescriptionGetTimeCodeFlags(formatdescription);
                         bool dropframes = flags & kCMTimeCodeFlag_DropFrame;
                         AVFps startfps = AVFps::guess(framequanta);
-                        Q_ASSERT("frame quanta does not match" && framequanta == startfps.to_frame_quanta());
+                        Q_ASSERT("frame quanta does not match" && framequanta == startfps.frame_quanta());
                         if (dropframes) {
                             if (startfps == AVFps::fps_24()) {
                                 startfps = AVFps::fps_23_976();
@@ -195,11 +194,11 @@ AVReaderPrivate::open()
                         Q_ASSERT("drop frames does not match" && dropframes == startfps.drop_frame());
                         if (type == kCMTimeCodeFormatType_TimeCode32) {
                             qint64 frame = static_cast<qint64>(EndianS32_BtoN(*reinterpret_cast<int32_t*>(data))); // 32-bit little-endian to native
-                            startcode = AVSmpteTime(AVTime(frame, startfps), startfps);
+                            startcode = AVSmpteTime(AVTime(frame, startfps));
                         }
                         else if (type == kCMTimeCodeFormatType_TimeCode64) {
                             qint64 frame = static_cast<qint64>(EndianS64_BtoN(*reinterpret_cast<int64_t*>(data))); // 64-bit big-endian to native
-                            startcode = AVSmpteTime(AVTime(frame, startfps), startfps);
+                            startcode = AVSmpteTime(AVTime(frame, startfps));
                         }
                         else {
                             Q_ASSERT("No valid type found for format description" && false);
@@ -334,7 +333,7 @@ AVReaderPrivate::seek(const AVTime& time)
         return;
     }
     [reader addOutput:videooutput];
-    timestamp = timerange.bound(time, fps, loop);
+    timestamp = timerange.bound(time, loop);
     AVTime duration = timerange.end() - timestamp;
     reader.timeRange = CMTimeRangeMake(to_time(timestamp), to_time(duration));
     if (![reader startReading]) {
@@ -358,9 +357,9 @@ AVReaderPrivate::stream()
     actualtimer.start();
     
     while (streaming) {
-        qint64 start = timestamp.frame(fps);
-        qint64 duration = timerange.duration().frame(fps);
-        timestamp.set_ticks(timestamp.ticks(start, fps)); // todo: add AVTime::align for frame alignment
+        qint64 start = timestamp.frames();
+        qint64 duration = timerange.duration().frames();
+        timestamp.set_ticks(timestamp.ticks(start)); // todo: add AVTime::align for frame alignment
         seek(timestamp);
         
         AVTimer frametimer(fps);
@@ -371,7 +370,7 @@ AVReaderPrivate::stream()
             }
             quint64 currenttime = frametimer.elapsed();
             read();
-            timestamp.set_ticks(timestamp.ticks(frame, fps));
+            timestamp.set_ticks(timestamp.ticks(frame));
             Q_ASSERT("timestamp and ptstamp does not match" && timestamp == ptstamp);
             object->time_changed(timestamp);
             object->timecode_changed(object->timecode());
@@ -422,20 +421,6 @@ AVReaderPrivate::to_timerange(const CMTimeRange& timerange) {
         range.set_duration(to_time(timerange.duration));
     }
     return range;
-    
-}
-
-AVSmpteTime
-AVReaderPrivate::to_timecode(const CVSMPTETime& other) {
-    AVSmpteTime timecode;
-    timecode.set_counter(other.counter);
-    timecode.set_hours(other.hours);
-    timecode.set_minutes(other.minutes);
-    timecode.set_seconds(other.seconds);
-    timecode.set_frames(other.frames);
-    timecode.set_subframes(other.subframes);
-    timecode.set_subframe_divisor(other.subframeDivisor);
-    return timecode;
 }
 
 AVReader::AVReader()

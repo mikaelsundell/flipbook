@@ -31,6 +31,7 @@ Project
 
 * GitHub page   
 https://github.com/mikaelsundell/flipbook
+
 * Issues   
 https://github.com/mikaelsundell/flipbook/issues
 

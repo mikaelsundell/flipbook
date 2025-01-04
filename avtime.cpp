@@ -3,15 +3,15 @@
 
 #include "avtime.h"
 
+#include <QDebug>
+
 class AVTimePrivate
 {
     public:
+        AVFps fps = AVFps::fps_24();
         qint64 ticks = 0;
         qint32 timescale = 24000;
         QAtomicInt ref;
-        qreal to_seconds() const {
-            return static_cast<qreal>(ticks) / timescale;
-        }
 };
 
 AVTime::AVTime()
@@ -19,17 +19,25 @@ AVTime::AVTime()
 {
 }
 
-AVTime::AVTime(qint64 ticks, qint32 timescale)
+AVTime::AVTime(qint64 ticks, qint32 timescale, const AVFps& fps)
 : p(new AVTimePrivate())
 {
     p->ticks = ticks;
     p->timescale = timescale;
+    p->fps = fps;
 }
 
 AVTime::AVTime(qint64 frame, const AVFps& fps)
 : p(new AVTimePrivate())
 {
-    p->ticks = ticks(frame, fps);
+    p->fps = fps;
+    p->ticks = ticks(frame);
+}
+
+AVTime::AVTime(const AVTime& other, const AVFps& fps)
+: p(other.p)
+{
+    p->fps = fps;
 }
 
 AVTime::AVTime(const AVTime& other)
@@ -41,6 +49,12 @@ AVTime::~AVTime()
 {
 }
 
+AVFps
+AVTime::fps() const
+{
+    return p->fps;
+}
+
 qint64
 AVTime::ticks() const
 {
@@ -48,15 +62,9 @@ AVTime::ticks() const
 }
 
 qint64
-AVTime::ticks(const AVFps& fps) const
+AVTime::ticks(qint64 frame) const
 {
-    return p->ticks - tpf(fps);
-}
-
-qint64
-AVTime::ticks(qint64 frame, const AVFps& fps) const
-{
-    return static_cast<qint64>(frame * tpf(fps));
+    return static_cast<qint64>(frame * tpf());
 }
 
 qint32
@@ -66,34 +74,40 @@ AVTime::timescale() const
 }
 
 qint64
-AVTime::tpf(const AVFps& fps) const
+AVTime::tpf() const
 {
-    return static_cast<qint64>(std::round(static_cast<qreal>(timescale()) / fps.to_real()));
+    return static_cast<qint64>(std::round(static_cast<qreal>(p->timescale) / p->fps.real()));
 }
 
 qint64
-AVTime::frame(const AVFps& fps) const
+AVTime::frames() const
 {
-    return static_cast<qint64>(ticks() / tpf(fps));
+    return static_cast<qint64>(ticks() / tpf());
+}
+
+qreal
+AVTime::seconds() const
+{
+    return static_cast<qreal>(p->ticks) / p->timescale;
 }
 
 QString
 AVTime::to_string() const
 {
-    qint64 seconds = p->to_seconds();
-    qint64 minutes = seconds / 60;
+    qint64 secs = seconds();
+    qint64 minutes = secs / 60;
     qint64 hours = minutes / 60;
-    seconds %= 60;
+    secs %= 60;
     minutes %= 60;
     if (hours > 0) {
         return QString("%1:%2:%3")
             .arg(hours, 2, 10, QChar('0'))
             .arg(minutes, 2, 10, QChar('0'))
-            .arg(seconds, 2, 10, QChar('0'));
+            .arg(secs, 2, 10, QChar('0'));
     } else {
         return QString("%1:%2")
             .arg(minutes, 2, 10, QChar('0'))
-            .arg(seconds, 2, 10, QChar('0'));
+            .arg(secs, 2, 10, QChar('0'));
     }
 }
 
@@ -116,11 +130,22 @@ AVTime::set_ticks(qint64 ticks)
 void
 AVTime::set_timescale(qint32 timescale)
 {
-    if (timescale > 0) {
+    if (p->timescale != timescale) {
         if (p->ref.loadRelaxed() > 1) {
             p.detach();
         }
         p->timescale = timescale;
+    }
+}
+
+void
+AVTime::set_fps(const AVFps& fps)
+{
+    if (p->fps != fps) {
+        if (p->ref.loadRelaxed() > 1) {
+            p.detach();
+        }
+        p->fps = fps;
     }
 }
 
@@ -146,34 +171,40 @@ AVTime::operator!=(const AVTime& other) const {
 
 bool
 AVTime::operator<(const AVTime& other) const {
-    return p->to_seconds() < other.p->to_seconds();
+    return seconds() < other.seconds();
 }
 
 bool
 AVTime::operator>(const AVTime& other) const {
-    return p->to_seconds() > other.p->to_seconds();
+    return seconds() > other.seconds();
 }
 
 bool
 AVTime::operator<=(const AVTime& other) const {
-    return p->to_seconds() <= other.p->to_seconds();
+    return seconds() <= other.seconds();
 }
 
 bool
 AVTime::operator>=(const AVTime& other) const {
-    return p->to_seconds() >= other.p->to_seconds();
+    return seconds() >= other.seconds();
 }
 
 AVTime
 AVTime::operator+(const AVTime& other) const {
     Q_ASSERT("timescale does not match" && p->timescale == other.p->timescale);
-    return AVTime(p->ticks + other.p->ticks, p->timescale);
+    return AVTime(p->ticks + other.p->ticks, p->timescale, p->fps);
 }
 
 AVTime
 AVTime::operator-(const AVTime& other) const {
     Q_ASSERT("timescale does not match" && p->timescale == other.p->timescale);
-    return AVTime(p->ticks - other.p->ticks, p->timescale);
+    return AVTime(p->ticks - other.p->ticks, p->timescale, p->fps);
+}
+
+AVTime
+AVTime::convert(const AVTime& time, const AVFps& from, const AVFps& to)
+{
+    return AVTime(AVFps::convert(time.ticks(), from, to), time.timescale(), to);
 }
 
 AVTime
@@ -190,5 +221,5 @@ AVTime::scale(AVTime time, qint32 timescale)
             ticks -= 1;
         }
     }
-    return AVTime(ticks, timescale);
+    return AVTime(ticks, timescale, time.fps());
 }
