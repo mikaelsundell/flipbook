@@ -42,6 +42,7 @@ class FlipbookPrivate : public QObject
         void seek_end();
         void seek_frame(qint64 frame);
         void seek_time(const AVTime& time);
+        void seek_finished();
         void stream(bool checked);
         void stop();
     
@@ -75,9 +76,10 @@ class FlipbookPrivate : public QObject
                     reader->seek(time);
                     reader->read();
                 });
+                watcher.setFuture(future);
             }
             else {
-                qWarning() << "could not seek reader at time: " << time.to_string() << ", ticks, " << time.ticks() << ", frame: " << time.frames() << ", thread already running";
+                state.seek = time;
             }
         }
         void run_stream() {
@@ -104,9 +106,11 @@ class FlipbookPrivate : public QObject
             bool loop;
             bool stream;
             bool fullscreen;
+            AVTime seek;
         };
         State state;
         QFuture<void> future;
+        QFutureWatcher<void> watcher;
         QScopedPointer<AVReader> reader;
         QPointer<Flipbook> window;
         QScopedPointer<Platform> platform;
@@ -150,6 +154,8 @@ FlipbookPrivate::init()
     connect(ui->timeline, &Timeline::slider_moved, this, &FlipbookPrivate::seek_time);
     // status
     connect(ui->stayawake, &QCheckBox::clicked, this, &FlipbookPrivate::stayawake);
+    // watchers
+    connect(&watcher, &QFutureWatcher<void>::finished, this, &FlipbookPrivate::seek_finished);
     // reader
     connect(reader.data(), &AVReader::opened, this, &FlipbookPrivate::set_opened);
     connect(reader.data(), &AVReader::video_changed, this, &FlipbookPrivate::set_video);
@@ -244,6 +250,17 @@ void
 FlipbookPrivate::seek_time(const AVTime& time)
 {
     run_seek(time);
+}
+
+void
+FlipbookPrivate::seek_finished()
+{
+    if (state.seek.valid()) {
+        if (state.seek.frames() != reader->time().frames()) {
+            run_seek(state.seek);
+        }
+        state.seek.invalidate();
+    }
 }
 
 void

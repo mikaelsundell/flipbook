@@ -27,6 +27,7 @@ class AVSmpteTime {
         bool allow_negatives() const;
         bool max_24hours() const;
         QString to_string() const;
+        void invalidate();
         bool valid() const;
         void set_time(const AVTime& time);
         void set_allow_negatives(bool allow_negatives);

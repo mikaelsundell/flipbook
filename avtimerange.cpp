@@ -79,6 +79,16 @@ AVTimeRange::to_string() const
     return QString("%1 / %2").arg(p->start.to_string()).arg(p->duration.to_string());
 }
 
+void
+AVTimeRange::invalidate()
+{
+    if (p->ref.loadRelaxed() > 1) {
+        p.detach();
+    }
+    p->start.invalidate();
+    p->duration.invalidate();
+}
+
 bool
 AVTimeRange::valid() const {
     return p->start.valid() && p->duration.valid() && p->duration.ticks() > 0;

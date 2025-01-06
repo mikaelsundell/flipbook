@@ -211,6 +211,14 @@ AVSmpteTime::to_string() const
         .arg(p->seconds, 2, 10, QChar('0'))
         .arg(p->frames, 2, 10, QChar('0'));
 }
+
+void
+AVSmpteTime::invalidate() {
+    if (p->ref.loadRelaxed() > 1) {
+        p.detach();
+    }
+    p->time.invalidate();
+}
     
 bool
 AVSmpteTime::valid() const {

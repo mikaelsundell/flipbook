@@ -150,6 +150,19 @@ void test_smpte() {
     smpte = AVSmpteTime(time);
     Q_ASSERT("smpte is 02:10:29:07 for 24 fps" && smpte.to_string() == "02:10:29:07");
     qDebug() << "smpte 24 fps: " << smpte.to_string();;
+    
+    // resolve data:
+    // frame: 87040, converted to 87148 at fps: 23.967
+    // 01:00:31:04
+    // 01:00:30 (wall clock time)
+    frame = 87040;
+    time = AVTime(frame, AVFps::fps_23_976());
+    Q_ASSERT("time is 01:00:30" && time.to_string() == "01:00:30");
+    qDebug() << "time: " << time.to_string();
+    
+    smpte = AVSmpteTime(time);
+    Q_ASSERT("smpte is 01:00:31:04 for 23.976 fps" && smpte.to_string() == "01:00:31.04");
+    qDebug() << "smpte 23.976: " << smpte.to_string();
 }
 
 void test_timer() {

@@ -26,6 +26,7 @@ class AVTime
         qint64 frames() const;
         qreal seconds() const;
         QString to_string() const;
+        void invalidate();
         bool valid() const;
     
         void set_ticks(qint64 ticks);

@@ -21,6 +21,7 @@ class AVTimeRange
         AVTime bound(const AVTime& time);
         AVTime bound(const AVTime& time, bool loop = false);
         QString to_string() const;
+        void invalidate();
         bool valid() const;
     
         void set_start(AVTime start);

@@ -118,6 +118,16 @@ AVTime::to_string() const
     }
 }
 
+void
+AVTime::invalidate() {
+    if (p->ref.loadRelaxed() > 1) {
+        p.detach();
+    }
+    p->ticks = 0;
+    p->timescale = 0;
+    p->fps = AVFps();
+}
+
 bool
 AVTime::valid() const {
     return p->timescale > 0;
