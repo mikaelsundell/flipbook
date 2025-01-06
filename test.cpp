@@ -88,7 +88,7 @@ void test_smpte() {
     qDebug() << "time: " << time.seconds();
     
     qint64 frame_df_23_976 = AVSmpteTime::dropframe(frame, AVFps::fps_23_976());
-    qint64 frame_24 = AVSmpteTime::dropframe(frame_df_23_976, AVFps::fps_23_976(), true);
+    qint64 frame_24 = AVSmpteTime::dropframe(frame_df_23_976, AVFps::fps_23_976(), true); // inverse
     Q_ASSERT("86496 dropframe is 86388" && frame_df_23_976 == 86388);
     Q_ASSERT("dropframe inverse does not match" && frame == frame_24);
     
@@ -107,6 +107,37 @@ void test_smpte() {
     Q_ASSERT("smpte is 01:00:04.00 for 23.976 fps" && smpte.to_string() == "01:00:04.00");
     qDebug() << "smpte 23.976 fps: " << smpte.to_string();
     
+    // quicktime data:
+    // 01:00:04:00
+    // 2542
+    // 01:46
+    // 01:01:49:22 (uses floor rather than round, 22583)
+    // 23.976 fps
+    time = AVTime(2544542, 24000, AVFps::fps_23_976());
+    Q_ASSERT("time is 01:46" && time.to_string() == "01:46");
+    Q_ASSERT("frames is 2542" && time.frames() == 2542);
+    qDebug() << "time: " << time.to_string();
+    qDebug() << "time frames: " << time.frames();
+    
+    frame = 2541;
+    AVTime duration = AVTime(frame, AVFps::fps_23_976()); // 0-2542, 2541 last frame
+    Q_ASSERT("frames is 2541" && duration.frames() == frame);
+    qDebug()  << "time frames: " << duration.frames();
+    
+    frame = 86496;
+    AVTime offset = AVTime(frame, AVFps::fps_24()); // typical timecode, 01:00:04:00, 24 fps
+    qDebug()  << "offset max: " << offset.frames();
+    qDebug()  << "offset smpte: " << AVSmpteTime(offset).to_string();
+    
+    frame = AVSmpteTime::dropframe(offset.frames(), AVFps::fps_23_976()); // fix it to 01:00:04:00, match 23.976 timecode, drop frame
+    Q_ASSERT("drop frame is 86388" && frame == 86388);
+    qDebug()  << "offset dropframe: " << frame;
+
+    smpte = AVSmpteTime(AVTime(duration.frames() + frame, AVFps::fps_23_976()));
+    Q_ASSERT("smpte is 01:01:49.23" && smpte.to_string() == "01:01:49.23");
+    qDebug() << "smpte: " << smpte.to_string();
+    
+    // ffmpeg data:
     // time_base=1/24000
     // duration_ts=187903716
     // 7829.344000
@@ -128,7 +159,8 @@ void test_timer() {
     future = QtConcurrent::run([] {
         QThread::currentThread()->setPriority(QThread::TimeCriticalPriority);
         AVFps fps = AVFps::fps_23_976();
-        AVTimeRange range(AVTime(1, fps), AVTime(24 * 400, fps)); // todo: test for 20 seconds
+        qint64 start = 1, duration = 24 * 400;
+        AVTimeRange range(AVTime(start, fps), AVTime(duration, fps));
         AVTimer totaltimer;
         totaltimer.start();
         AVTimer timer(fps);
@@ -166,7 +198,7 @@ void test_timer() {
                 << "deviation:" << deviation << ", msecs: " << deviation * 1000 << "%:" << (deviation / expected) * 100
                 << "dropped: " << dropped;
 
-        Q_ASSERT("deviation more than 50 msecs" && qAbs(deviation) > 0.04);
+        Q_ASSERT("deviation more than 50 msecs" && qAbs(deviation) > 0.05);
     });
     future.waitForFinished();
 }

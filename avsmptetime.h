@@ -44,7 +44,8 @@ class AVSmpteTime {
     
         static qint64 dropframe(quint64 frame, const AVFps& fps, bool inverse = false);
         static qint64 frame(quint16 hours, quint16 minutes, quint16 seconds, quint16 frames, const AVFps& fps);
-
+        static AVSmpteTime combine(const AVTime& time, const AVTime& other);
+                                   
     private:
         QExplicitlySharedDataPointer<AVSmpteTimePrivate> p;
 };

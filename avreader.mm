@@ -43,7 +43,7 @@ class AVReaderPrivate
         }
         AVSmpteTime timecode() const
         {
-            return AVSmpteTime(timestamp) + startcode;
+            return AVSmpteTime::combine(timestamp, startcode.time());
         }
         CMTime to_time(const AVTime& other);
         CMTimeRange to_timerange(const AVTimeRange& other);
@@ -145,9 +145,9 @@ AVReaderPrivate::open()
         qWarning() << "warning: " << errormessage;
         return false;
     }
+    fps = AVFps::guess(videotrack.nominalFrameRate);
     timerange = AVTimeRange::scale(to_timerange(videotrack.timeRange));
     timestamp = timerange.start();
-    fps = AVFps::guess(videotrack.nominalFrameRate);
     AVAssetTrack* timecodetrack = [[asset tracksWithMediaType:AVMediaTypeTimecode] firstObject];
     if (timecodetrack) {
         AVAssetReader* timecodereader = [[AVAssetReader alloc] initWithAsset:asset error:&averror];
@@ -352,39 +352,52 @@ AVReaderPrivate::stream()
     streaming = true;
     object->stream_changed(streaming);
     QThread::currentThread()->setPriority(QThread::TimeCriticalPriority);
-    qint64 frames = 0;
-    AVTimer actualtimer;
-    actualtimer.start();
     
+    AVTimer statstimer;
+    statstimer.start();
+    
+    AVTimer fpstimer;
+    fpstimer.start();
+    
+    qint64 frame = 0;
+    qint64 start = 0;
+    qint64 duration = 0;
+    qint64 dropped = 0;
+    qint64 fpsframes = 0;
     while (streaming) {
-        qint64 start = timestamp.frames();
-        qint64 duration = timerange.duration().frames();
+        start = timestamp.frames();
+        duration = timerange.duration().frames();
         timestamp.set_ticks(timestamp.ticks(start)); // todo: add AVTime::align for frame alignment
         seek(timestamp);
-        
+
         AVTimer frametimer(fps);
         frametimer.start();
-        for (qint64 frame = start; frame < duration; frame++) {
+        bool reset = false;
+        for (frame = start; frame < duration; frame++) {
             if (!streaming) {
                 break;
             }
-            quint64 currenttime = frametimer.elapsed();
+            if (reset) {
+                seek(AVTime(frame, fps));
+                reset = false;
+            }
             read();
             timestamp.set_ticks(timestamp.ticks(frame));
-            Q_ASSERT("timestamp and ptstamp does not match" && timestamp == ptstamp);
             object->time_changed(timestamp);
             object->timecode_changed(object->timecode());
-            frames++;
-            
+            fpsframes++;
             frametimer.wait();
+            
             while (!frametimer.next()) {
-                frame++;
+                frame++; reset = true;
+                dropped++;
             }
-            if (frames % 10 == 0) {
-                qreal actualfps = frames / AVTimer::convert(actualtimer.elapsed(), AVTimer::Unit::SECONDS);
+            
+            if (fpsframes % 10 == 0) {
+                qreal actualfps = fpsframes / AVTimer::convert(fpstimer.elapsed(), AVTimer::Unit::SECONDS);
                 object->actual_fps_changed(actualfps);
-                actualtimer.restart();
-                frames = 0;
+                fpstimer.restart();
+                fpsframes = 0;
             }
         }
         if (!loop || !streaming) {
@@ -395,6 +408,18 @@ AVReaderPrivate::stream()
     streaming = false;
     object->stream_changed(streaming);
     QThread::currentThread()->setPriority(QThread::NormalPriority);
+    
+    statstimer.stop();
+    qreal elapsed = AVTimer::convert(statstimer.elapsed(), AVTimer::Unit::SECONDS);
+    qreal expected = AVTime(frame - start, fps).seconds();
+    qreal deviation = elapsed - expected;
+    
+    qDebug() << "stats: "
+             << "timestamp: " << timestamp.to_string() << "|"
+             << "elapsed:" << elapsed << "seconds" << AVTime(elapsed, fps).to_string() << "|"
+             << "expected:" << expected
+             << "deviation:" << deviation << "msecs:" << deviation * 1000 << "%:" << (deviation / expected) * 100
+             << "| frames dropped:" << dropped;
 }
 
 CMTime
@@ -402,13 +427,15 @@ AVReaderPrivate::to_time(const AVTime& other) {
    return CMTimeMakeWithEpoch(other.ticks(), other.timescale(), 0); // default epoch and flags
 }
 
-
 AVTime
 AVReaderPrivate::to_time(const CMTime& other) {
+    Q_ASSERT("fps is not valid" && fps.valid());
+    
     AVTime time;
     if (CMTIME_IS_VALID(other)) {
         time.set_ticks(other.value);
         time.set_timescale(other.timescale);
+        time.set_fps(fps);
     }
     return time;
 }

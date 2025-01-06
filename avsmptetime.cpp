@@ -268,18 +268,19 @@ AVSmpteTime::operator>=(const AVSmpteTime& other) const {
     return this->frame() >= other.frame();
 }
 
-
 AVSmpteTime
 AVSmpteTime::operator+(const AVSmpteTime& other) const {
-    qint64 totalframes = this->frame() + other.frame();
-    AVTime time = AVTime(totalframes, p->time.fps());
+    Q_ASSERT("fps must match" && p->time.fps() == other.time().fps());
+    qint64 frames = this->time().frames() + other.time().frames();
+    AVTime time = AVTime(frames, p->time.fps());
     return AVSmpteTime(time);
 }
 
 AVSmpteTime
 AVSmpteTime::operator-(const AVSmpteTime& other) const {
-    qint64 totalframes = this->frame() - other.frame();
-    AVTime time = AVTime(totalframes, p->time.fps());
+    Q_ASSERT("fps must match" && p->time.fps() == other.time().fps());
+    qint64 frames = this->time().frames() - other.time().frames();
+    AVTime time = AVTime(frames, p->time.fps());
     return AVSmpteTime(time);
 }
 
@@ -340,4 +341,26 @@ AVSmpteTime::frame(quint16 hours, quint16 minutes, quint16 seconds, quint16 fram
     if (minutes & 0x80) // check for negative bit
         frame = -frame;
     return frame;
+}
+
+
+AVSmpteTime
+AVSmpteTime::combine(const AVTime& time, const AVTime& other)
+{
+    AVFps fps = time.fps();
+    AVFps fpsother = other.fps();
+    qint64 frames = other.frames();
+    if (fps != fpsother) {
+        if (fps.frame_quanta() == fpsother.frame_quanta()) {
+            if (fps.drop_frame() && !fpsother.drop_frame()) {
+                frames = AVSmpteTime::dropframe(frames, fps, false);
+            }
+            else if (!fps.drop_frame() && fpsother.drop_frame()) {
+                frames = AVSmpteTime::dropframe(frames, fpsother, true);
+            }
+        } else {
+            frames = AVFps::convert(frames, fpsother, fps);
+        }
+    }
+    return AVSmpteTime(AVTime(time.frames() + frames, fps));
 }

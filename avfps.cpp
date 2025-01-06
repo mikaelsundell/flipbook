@@ -149,22 +149,22 @@ AVFps::operator!=(const AVFps& other) const {
 
 bool
 AVFps::operator<(const AVFps& other) const {
-    return seconds() < other.seconds();
+    return real() < other.real();
 }
 
 bool
 AVFps::operator>(const AVFps& other) const {
-    return seconds() > other.seconds();
+    return real() > other.real();
 }
 
 bool
 AVFps::operator<=(const AVFps& other) const {
-    return seconds() <= other.seconds();
+    return real() <= other.real();
 }
 
 bool
 AVFps::operator>=(const AVFps& other) const {
-    return seconds() >= other.seconds();
+    return real() >= other.real();
 }
 
 AVFps::operator double() const

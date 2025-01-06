@@ -14,6 +14,7 @@ class AVTime
         AVTime();
         AVTime(qint64 ticks, qint32 timescale, const AVFps& fps);
         AVTime(qint64 frame, const AVFps& fps);
+        AVTime(qreal seconds, const AVFps& fps);
         AVTime(const AVTime& other, const AVFps& fps);
         AVTime(const AVTime& other);
         ~AVTime();

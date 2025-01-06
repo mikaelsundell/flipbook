@@ -37,7 +37,7 @@ class AVReader : public QObject {
         AVFps fps() const;
         bool loop() const;
         AVSmpteTime timecode() const;
-        AVSmpteTime offset() const;
+        AVSmpteTime start() const;
         AVMetadata metadata();
         AVSidecar sidecar();
         AVReader::Error error() const;
