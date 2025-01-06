@@ -6,7 +6,7 @@ Flipbook
 Introduction
 ------------
 
-This project is a purely experimental exploration of Qt's accelerated 3D API and its shader abstraction layer, applied to QuickTime video readering. It serves as a sandbox for testing concepts, experimenting with real-time rendering and integration of QuickTime with Qt frameworks.
+This project is a purely experimental exploration of Qt's accelerated 3D API and its shader abstraction layer, applied to QuickTime video playback and macOS Mach timing APIs. It serves as a sandbox for testing concepts, including real-time rendering, integration of QuickTime with Qt frameworks, and precise time synchronization using macOS Mach timers and SMPTE timecode generation.
 
 References
 -------------
@@ -20,10 +20,10 @@ https://doc.qt.io/qt-6/qtguiprivate-module.html
 * AVFoundation   
 https://developer.apple.com/documentation/avfoundation/
 
-* Apple Technotes SMPTE
+* Apple Technotes SMPTE   
 https://developer.apple.com/library/archive/technotes/tn2310/_index.html
 
-* Apple Mach Absolute Time Units
+* Apple Mach Absolute Time Units   
 https://developer.apple.com/library/archive/qa/qa1398/_index.html
 
 Project
