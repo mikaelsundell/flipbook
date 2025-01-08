@@ -392,6 +392,7 @@ AVReaderPrivate::stream()
         qint64 duration = timerange.duration().frames();
         ticks = timestamp.ticks();
         seek(timestamp);
+        statstimer.lap();
 
         AVTimer frametimer(fps);
         frametimer.start();
@@ -441,6 +442,7 @@ AVReaderPrivate::stream()
              << "elapsed:" << elapsed << "seconds" << AVTime(elapsed, fps).to_string() << "|"
              << "expected:" << expected
              << "deviation:" << deviation << "msecs:" << deviation * 1000 << "%:" << (deviation / expected) * 100
+             << "seek:" << AVTimer::convert(statstimer.laps().first(), AVTimer::Unit::SECONDS) * 1000
              << "| frames dropped:" << droppedframes;
 }
 

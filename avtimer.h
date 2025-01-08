@@ -21,17 +21,18 @@ class AVTimer : public QObject {
         void start();
         void stop();
         void restart();
+        void lap();
         bool next();
         void wait();
         void sleep(quint64 msecs);
         AVFps fps() const;
         quint64 elapsed() const;
+        QList<quint64> laps() const;
 
         void set_fps(const AVFps& fps);
     
         static qreal convert(quint64 nano, Unit unit = Unit::NANOS);
 
-        
     private:
         QScopedPointer<AVTimerPrivate> p;
 };

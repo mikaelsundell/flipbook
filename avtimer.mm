@@ -31,20 +31,21 @@ class AVTimerPrivate
             return (time * timebase.denom) / timebase.numer;
         }
         quint64 elapsed() {
-            quint64 endtime = stoptime > 0 ? stoptime : mach_absolute_time();
-            return (endtime - starttime) * timebase.numer / timebase.denom;
+            quint64 end = stop > 0 ? stop : mach_absolute_time();
+            return (end - start) * timebase.numer / timebase.denom;
         }
-        quint64 starttime;
-        quint64 stoptime;
-        quint64 nexttime;
+        quint64 start;
+        quint64 stop;
+        quint64 next;
         quint64 interval;
+        QList<quint64> laps;
         AVFps fps;
         mach_timebase_info_data_t timebase;
 };
 
 AVTimerPrivate::AVTimerPrivate()
-: starttime(0)
-, stoptime(0)
+: start(0)
+, stop(0)
 {
     mach_timebase_info(&timebase);
 }
@@ -74,37 +75,44 @@ void
 AVTimer::start()
 {
     Q_ASSERT("fps is zero" && p->fps.seconds() > 0);
-    p->starttime = mach_absolute_time();
-    p->nexttime = p->starttime + p->to_ticks(p->to_nano(p->fps));
-    p->stoptime = 0;
+    p->start = mach_absolute_time();
+    p->next = p->start + p->to_ticks(p->to_nano(p->fps));
+    p->stop = 0;
 }
 
 void
 AVTimer::stop()
 {
-    p->stoptime = mach_absolute_time();
-    p->nexttime = p->stoptime;
+    p->stop = mach_absolute_time();
+    p->next = p->stop;
 }
 
 void
 AVTimer::restart()
 {
+    p->laps.clear();
     start();
+}
+
+void
+AVTimer::lap()
+{
+    p->laps.append(elapsed());
 }
 
 bool
 AVTimer::next()
 {
     quint64 currenttime = mach_absolute_time();
-    p->nexttime += p->to_ticks(p->to_nano(p->fps));
-    return p->nexttime > currenttime;
+    p->next += p->to_ticks(p->to_nano(p->fps));
+    return p->next > currenttime;
 }
 
 void 
 AVTimer::wait()
 {
-    Q_ASSERT("starttime must be less than nexttime" && p->starttime < p->nexttime);
-    mach_wait_until(p->nexttime);
+    Q_ASSERT("start time must be less than nexttime" && p->start < p->next);
+    mach_wait_until(p->next);
 }
 
 void
@@ -121,8 +129,14 @@ AVTimer::sleep(quint64 msecs)
 quint64
 AVTimer::elapsed() const
 {
-    quint64 endtime = p->stoptime > 0 ? p->stoptime : mach_absolute_time();
-    return p->to_nano(endtime - p->starttime);
+    quint64 end = p->stop > 0 ? p->stop : mach_absolute_time();
+    return p->to_nano(end - p->start);
+}
+
+QList<quint64>
+AVTimer::laps() const
+{
+    return p->laps;
 }
 
 void

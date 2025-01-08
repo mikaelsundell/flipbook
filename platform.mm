@@ -47,33 +47,33 @@ PlatformPrivate::~PlatformPrivate()
 void
 PlatformPrivate::init()
 {
-    io_connect_t rootPort = IORegisterForSystemPower(this, &notificationport, power_callback, &notifier);
-    if (rootPort == MACH_PORT_NULL) {
+    io_connect_t rootport = IORegisterForSystemPower(this, &notificationport, power_callback, &notifier);
+    if (rootport == MACH_PORT_NULL) {
         qWarning() << "failed to register for system power notifications.";
         return;
     }
-    CFRunLoopSourceRef runLoopSource = IONotificationPortGetRunLoopSource(notificationport);
-    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
+    CFRunLoopSourceRef runloopsource = IONotificationPortGetRunLoopSource(notificationport);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), runloopsource, kCFRunLoopDefaultMode);
     [NSApp setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]]; // force dark aque appearance
 }
 
 void
-PlatformPrivate::power_callback(void* refCon, io_service_t service, natural_t messageType, void* messageArgument)
+PlatformPrivate::power_callback(void* refcon, io_service_t service, natural_t messagetype, void* message)
 {
-    PlatformPrivate* platformPrivate = static_cast<PlatformPrivate*>(refCon);
-    if (!platformPrivate || !platformPrivate->object) {
+    PlatformPrivate* platformprivate = static_cast<PlatformPrivate*>(refcon);
+    if (!platformprivate || !platformprivate->object) {
         return;
     }
-    switch (messageType) {
+    switch (messagetype) {
         case kIOMessageSystemWillPowerOff:
-            platformPrivate->object->power_changed(Platform::POWEROFF);
+            platformprivate->object->power_changed(Platform::POWEROFF);
             break;
         case kIOMessageSystemWillRestart:
-            platformPrivate->object->power_changed(Platform::RESTART);
+            platformprivate->object->power_changed(Platform::RESTART);
             break;
         case kIOMessageSystemWillSleep:
-            platformPrivate->object->power_changed(Platform::SLEEP);
-            IOAllowPowerChange(service, (long)messageArgument);
+            platformprivate->object->power_changed(Platform::SLEEP);
+            IOAllowPowerChange(service, (long)message);
             break;
         default:
             break;
