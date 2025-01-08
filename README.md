@@ -1,4 +1,4 @@
-Flipbook
+Flipman
 ==================
 
 [![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg?style=flat-square)](https://github.com/mikaelsundell/brawtool/blob/master/README.md)
@@ -30,8 +30,8 @@ Project
 -------
 
 * GitHub page   
-https://github.com/mikaelsundell/flipbook
+https://github.com/mikaelsundell/flipman
 
 * Issues   
-https://github.com/mikaelsundell/flipbook/issues
+https://github.com/mikaelsundell/flipman/issues
 

@@ -92,6 +92,12 @@ AVTime::frames() const
     return static_cast<qint64>(ticks() / tpf());
 }
 
+qint64
+AVTime::align(qint64 ticks) const
+{
+    return this->ticks(static_cast<qint64>(ticks / tpf()));
+}
+
 qreal
 AVTime::seconds() const
 {
@@ -178,7 +184,7 @@ AVTime::operator=(const AVTime& other)
 bool
 AVTime::operator==(const AVTime& other) const
 {
-    return p->ticks == other.p->ticks && p->timescale == other.p->timescale;
+    return p->ticks == other.p->ticks && p->timescale == other.p->timescale && p->fps == other.p->fps;
 }
 
 bool

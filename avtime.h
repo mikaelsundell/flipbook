@@ -24,6 +24,7 @@ class AVTime
         qint32 timescale() const;
         qint64 tpf() const;
         qint64 frames() const;
+        qint64 align(qint64 ticks) const;
         qreal seconds() const;
         QString to_string() const;
         void invalidate();

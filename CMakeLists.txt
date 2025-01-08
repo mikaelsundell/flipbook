@@ -1,9 +1,9 @@
-# Copyright 2022-present Contributors to the flipbook project.
+# Copyright 2022-present Contributors to the flipman project.
 # SPDX-License-Identifier: BSD-3-Clause
-# https://github.com/mikaelsundell/flipbook
+# https://github.com/mikaelsundell/flipman
 
 cmake_minimum_required (VERSION 3.27)
-set (project_name "flipbook")
+set (project_name "flipman")
 
 project (${project_name})
 
@@ -16,7 +16,7 @@ set (CMAKE_AUTOUIC ON)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # app
-set (app_name "flipbook")
+set (app_name "flipman")
 
 # sources
 set (app_sources
@@ -36,8 +36,8 @@ set (app_sources
     avtimerange.cpp
     avtimer.h
     avtimer.mm
-    flipbook.h
-    flipbook.cpp
+    flipman.h
+    flipman.cpp
     main.cpp
     platform.h
     platform.mm
@@ -47,7 +47,7 @@ set (app_sources
     test.cpp
     timeline.h
     timeline.cpp
-    flipbook.ui
+    flipman.ui
 )
 
 # resources
@@ -66,7 +66,7 @@ set (bundle_sources
 source_group("Resouce Files" FILES ${app_resources})
 
 if (APPLE)
-    set (MACOSX_BUNDLE_GUI_IDENTIFIER "com.github.mikaelsundell.flipbook")
+    set (MACOSX_BUNDLE_GUI_IDENTIFIER "com.github.mikaelsundell.flipman")
     set (MACOSX_BUNDLE_EXECUTABLE_NAME ${app_name})
     set (MACOSX_BUNDLE_INFO_STRING ${app_name})
     set (MACOSX_BUNDLE_BUNDLE_NAME ${app_name})
@@ -84,7 +84,7 @@ if (APPLE)
     add_definitions(-DMACOSX_BUNDLE_GUI_IDENTIFIER="${MACOSX_BUNDLE_GUI_IDENTIFIER}")
     add_definitions(-DMACOSX_BUNDLE_COPYRIGHT="${MACOSX_BUNDLE_COPYRIGHT}")
     add_definitions(-DMACOSX_BUNDLE_LONG_VERSION_STRING="${MACOSX_BUNDLE_LONG_VERSION_STRING}")
-    add_definitions(-DGITHUBURL="https://github.com/mikaelsundell/flipbook")
+    add_definitions(-DGITHUBURL="https://github.com/mikaelsundell/flipman")
     set_target_properties(${project_name} PROPERTIES
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${MACOSX_BUNDLE_GUI_IDENTIFIER}"
         MACOSX_BUNDLE_INFO_PLIST ${bundle_sources}

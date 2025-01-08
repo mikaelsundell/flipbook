@@ -45,6 +45,7 @@ class AVReader : public QObject {
     
     public Q_SLOTS:
         void set_loop(bool loop);
+        void set_everyframe(bool everyframe);
         void seek(const AVTime& time);
         void stream();
         void stop();
@@ -56,7 +57,8 @@ class AVReader : public QObject {
         void range_changed(const AVTimeRange& timerange);
         void video_changed(const QImage& image);
         void audio_changed(const QByteArray& buffer);
-        void loop_changed(bool looping);
+        void loop_changed(bool loop);
+        void everyframe_changed(bool everyframe);
         void stream_changed(bool streaming);
         void actual_fps_changed(qreal fps);
 

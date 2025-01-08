@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Flipbook</class>
- <widget class="QMainWindow" name="Flipbook">
+ <class>Flipman</class>
+ <widget class="QMainWindow" name="Flipman">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1135</width>
+    <width>1161</width>
     <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Flipbook</string>
+   <string>Flipman</string>
   </property>
   <widget class="QWidget" name="central_widget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -38,6 +38,11 @@
        </property>
        <item>
         <widget class="QPushButton" name="tool_open">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>open</string>
          </property>
@@ -79,6 +84,11 @@
           </property>
           <item>
            <widget class="QPushButton" name="tool_start">
+            <property name="font">
+             <font>
+              <pointsize>11</pointsize>
+             </font>
+            </property>
             <property name="text">
              <string>start</string>
             </property>
@@ -86,6 +96,11 @@
           </item>
           <item>
            <widget class="QPushButton" name="tool_previous">
+            <property name="font">
+             <font>
+              <pointsize>11</pointsize>
+             </font>
+            </property>
             <property name="text">
              <string>previous</string>
             </property>
@@ -93,6 +108,11 @@
           </item>
           <item>
            <widget class="QPushButton" name="tool_next">
+            <property name="font">
+             <font>
+              <pointsize>11</pointsize>
+             </font>
+            </property>
             <property name="text">
              <string>next</string>
             </property>
@@ -100,6 +120,11 @@
           </item>
           <item>
            <widget class="QPushButton" name="tool_play">
+            <property name="font">
+             <font>
+              <pointsize>11</pointsize>
+             </font>
+            </property>
             <property name="styleSheet">
              <string notr="true"/>
             </property>
@@ -113,6 +138,11 @@
           </item>
           <item>
            <widget class="QPushButton" name="tool_end">
+            <property name="font">
+             <font>
+              <pointsize>11</pointsize>
+             </font>
+            </property>
             <property name="text">
              <string>end</string>
             </property>
@@ -133,6 +163,11 @@
        </item>
        <item>
         <widget class="QPushButton" name="tool_loop">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>loop</string>
          </property>
@@ -153,6 +188,11 @@
        </item>
        <item>
         <widget class="QPushButton" name="in">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>in</string>
          </property>
@@ -160,6 +200,11 @@
        </item>
        <item>
         <widget class="QPushButton" name="out">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>out</string>
          </property>
@@ -261,6 +306,11 @@
        </item>
        <item>
         <widget class="QLabel" name="label">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>FPS</string>
          </property>
@@ -299,6 +349,36 @@
         </widget>
        </item>
        <item>
+        <spacer name="horizontalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Policy::Minimum</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>4</width>
+           <height>10</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="tool_everyframe">
+         <property name="font">
+          <font>
+           <family>Courier New</family>
+           <pointsize>11</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>EF </string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QFrame" name="frame_10">
          <property name="frameShape">
           <enum>QFrame::Shape::VLine</enum>
@@ -310,6 +390,11 @@
        </item>
        <item>
         <widget class="QPushButton" name="tool_sound">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>on</string>
          </property>
@@ -333,6 +418,11 @@
        </item>
        <item>
         <widget class="QPushButton" name="tool_fullscreen">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>fullscreen</string>
          </property>
@@ -520,6 +610,28 @@
         </widget>
        </item>
        <item>
+        <widget class="QLabel" name="info">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Image: 0x0 ARGB</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="frame_11">
+         <property name="frameShape">
+          <enum>QFrame::Shape::VLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Plain</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="render">
          <property name="font">
           <font>
@@ -558,6 +670,11 @@
        </item>
        <item>
         <widget class="QPushButton" name="lut">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>lut</string>
          </property>
@@ -565,8 +682,25 @@
        </item>
        <item>
         <widget class="QPushButton" name="icc">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>icc</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="debug">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>debug</string>
          </property>
         </widget>
        </item>
@@ -580,8 +714,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1135</width>
-     <height>37</height>
+     <width>1161</width>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">

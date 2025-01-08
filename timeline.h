@@ -24,14 +24,12 @@ class Timeline : public QWidget
         QSize sizeHint() const override;
         AVTimeRange range() const;
         AVTime time() const;
-        AVFps fps() const;
         bool tracking() const;
         Units units() const;
     
     public Q_SLOTS:
         void set_range(const AVTimeRange& range);
         void set_time(const AVTime& time);
-        void set_fps(const AVFps& fps);
         void set_tracking(bool tracking);
         void set_units(Timeline::Units units);
     

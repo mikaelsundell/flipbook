@@ -24,23 +24,11 @@ class AVReaderPrivate
         void open();
         void close();
         void read();
+        void drop();
         void seek(const AVTime& time);
         void stream();
     
     public:
-        void debug_time(QImage& image, AVTime time) { // todo: temporary
-            QPainter painter(&image);
-            QFont font("Arial", 30, QFont::Bold);
-            painter.setFont(font);
-            painter.setPen(QColor(Qt::white));
-            QString text = QString("AVTime: %1 / %2 / %3").arg(time.ticks()).arg(time.timescale()).arg(time.frames());
-            QFontMetrics fm(font);
-            int textWidth = fm.horizontalAdvance(text);
-            int textHeight = fm.height();
-            QPoint position((image.width() - textWidth) / 2, image.height() - textHeight - 120);
-            painter.drawText(position, text);
-            painter.end();
-        }
         AVSmpteTime timecode() const
         {
             return AVSmpteTime::combine(timestamp, startcode.time());
@@ -60,6 +48,7 @@ class AVReaderPrivate
         QString filename;
         QString title;
         std::atomic<bool> loop;
+        std::atomic<bool> everyframe;
         std::atomic<bool> streaming;
         AVMetadata metadata;
         AVSidecar sidecar;
@@ -70,6 +59,7 @@ class AVReaderPrivate
 
 AVReaderPrivate::AVReaderPrivate()
 : loop(false)
+, everyframe(false)
 , streaming(false)
 {
 }
@@ -145,7 +135,29 @@ AVReaderPrivate::open()
         qWarning() << "warning: " << errormessage;
         return false;
     }
-    fps = AVFps::guess(videotrack.nominalFrameRate);
+    NSArray *formats = [videotrack formatDescriptions];
+    for (id formatDesc in formats) {
+        CMFormatDescriptionRef desc = (__bridge CMFormatDescriptionRef)formatDesc;
+        CMMediaType mediaType = CMFormatDescriptionGetMediaType(desc);
+        FourCharCode codecType = CMFormatDescriptionGetMediaSubType(desc);
+        NSString* media = [NSString stringWithFormat:@"%c%c%c%c",
+                                     (mediaType >> 24) & 0xFF,
+                                     (mediaType >> 16) & 0xFF,
+                                     (mediaType >> 8) & 0xFF,
+                                     mediaType & 0xFF];
+
+        NSString* codec = [NSString stringWithFormat:@"%c%c%c%c",
+                                     (codecType >> 24) & 0xFF,
+                                     (codecType >> 16) & 0xFF,
+                                     (codecType >> 8) & 0xFF,
+                                     codecType & 0xFF];
+
+        metadata.add_pair("media type", QString::fromNSString(media));
+        metadata.add_pair("codec type", QString::fromNSString(codec));
+    }
+    CMTime minduration = videotrack.minFrameDuration; // skip nominal frame rate for precision
+    qreal duration = static_cast<qreal>(minduration.value) / minduration.timescale;
+    fps = AVFps::guess(1.0 / duration);
     timerange = AVTimeRange::scale(to_timerange(videotrack.timeRange));
     timestamp = timerange.start();
     AVAssetTrack* timecodetrack = [[asset tracksWithMediaType:AVMediaTypeTimecode] firstObject];
@@ -252,9 +264,9 @@ AVReaderPrivate::close()
     startcode = AVSmpteTime();
     timerange = AVTimeRange();
     timestamp = AVTime();
-    title.clear();
-    streaming = false;
+    ptstamp = AVTime();
     fps = AVFps();
+    title.clear();
     metadata = AVMetadata();
     sidecar = AVSidecar();
     error = AVReader::NO_ERROR;
@@ -265,7 +277,7 @@ void
 AVReaderPrivate::read()
 {
     Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
-    
+ 
     CMSampleBufferRef samplebuffer = [videooutput copyNextSampleBuffer];
     if (!samplebuffer) {
         error = AVReader::API_ERROR;
@@ -292,15 +304,27 @@ AVReaderPrivate::read()
                  QImage::Format_ARGB32);
     CVPixelBufferUnlockBaseAddress(imagebuffer, kCVPixelBufferLock_ReadOnly);
     ptstamp = AVTime::scale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)));
+    Q_ASSERT("read timestamp and ptstamp does not match" && timestamp == ptstamp);
     CFRelease(samplebuffer);
-    debug_time(image, ptstamp); // todo: temporary
     object->video_changed(image.copy());
+}
+
+void
+AVReaderPrivate::drop()
+{
+    Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
+
+    CMSampleBufferRef samplebuffer = [videooutput copyNextSampleBuffer];
+    ptstamp = AVTime::scale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)));
+    Q_ASSERT("drop timestamp and ptstamp does not match" && timestamp == ptstamp);
+    CFRelease(samplebuffer);
 }
 
 void
 AVReaderPrivate::seek(const AVTime& time)
 {
     Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
+    Q_ASSERT("ticks are not aligned" && time.ticks() == time.align(time.ticks()));
 
     if (reader) {
         [reader cancelReading];
@@ -360,39 +384,36 @@ AVReaderPrivate::stream()
     fpstimer.start();
     
     qint64 frame = 0;
-    qint64 start = 0;
-    qint64 duration = 0;
-    qint64 dropped = 0;
+    qint64 ticks = 0;
+    qint64 droppedframes = 0;
     qint64 fpsframes = 0;
     while (streaming) {
-        start = timestamp.frames();
-        duration = timerange.duration().frames();
-        timestamp.set_ticks(timestamp.ticks(start)); // todo: add AVTime::align for frame alignment
+        qint64 start = timestamp.frames();
+        qint64 duration = timerange.duration().frames();
+        ticks = timestamp.ticks();
         seek(timestamp);
 
         AVTimer frametimer(fps);
         frametimer.start();
-        bool reset = false;
         for (frame = start; frame < duration; frame++) {
             if (!streaming) {
                 break;
             }
-            if (reset) {
-                seek(AVTime(frame, fps));
-                reset = false;
-            }
-            read();
             timestamp.set_ticks(timestamp.ticks(frame));
+            read();
+            
             object->time_changed(timestamp);
             object->timecode_changed(object->timecode());
             fpsframes++;
             frametimer.wait();
             
-            while (!frametimer.next()) {
-                frame++; reset = true;
-                dropped++;
+            while (!frametimer.next() && !everyframe) {
+                frame++;
+                fpsframes++;
+                droppedframes++;
+                timestamp.set_ticks(timestamp.ticks(frame));
+                drop();
             }
-            
             if (fpsframes % 10 == 0) {
                 qreal actualfps = fpsframes / AVTimer::convert(fpstimer.elapsed(), AVTimer::Unit::SECONDS);
                 object->actual_fps_changed(actualfps);
@@ -406,12 +427,13 @@ AVReaderPrivate::stream()
         timestamp = timerange.start();
     }
     streaming = false;
+    statstimer.stop();
+    
     object->stream_changed(streaming);
     QThread::currentThread()->setPriority(QThread::NormalPriority);
     
-    statstimer.stop();
     qreal elapsed = AVTimer::convert(statstimer.elapsed(), AVTimer::Unit::SECONDS);
-    qreal expected = AVTime(frame - start, fps).seconds();
+    qreal expected = AVTime(timestamp.ticks() - ticks, timestamp.timescale(), timestamp.fps()).seconds();
     qreal deviation = elapsed - expected;
     
     qDebug() << "stats: "
@@ -419,7 +441,7 @@ AVReaderPrivate::stream()
              << "elapsed:" << elapsed << "seconds" << AVTime(elapsed, fps).to_string() << "|"
              << "expected:" << expected
              << "deviation:" << deviation << "msecs:" << deviation * 1000 << "%:" << (deviation / expected) * 100
-             << "| frames dropped:" << dropped;
+             << "| frames dropped:" << droppedframes;
 }
 
 CMTime
@@ -570,6 +592,15 @@ AVReader::set_loop(bool loop)
     if (p->loop != loop) {
         p->loop = loop;
         loop_changed(loop);
+    }
+}
+
+void
+AVReader::set_everyframe(bool everyframe)
+{
+    if (p->everyframe != everyframe) {
+        p->everyframe = everyframe;
+        everyframe_changed(everyframe);
     }
 }
 
