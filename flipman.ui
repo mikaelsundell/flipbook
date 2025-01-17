@@ -221,7 +221,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="timecode">
+        <widget class="QLabel" name="smptetime">
          <property name="minimumSize">
           <size>
            <width>80</width>
@@ -282,6 +282,12 @@
        </item>
        <item>
         <widget class="QLabel" name="frame">
+         <property name="minimumSize">
+          <size>
+           <width>40</width>
+           <height>0</height>
+          </size>
+         </property>
          <property name="font">
           <font>
            <family>Courier New</family>
@@ -454,13 +460,33 @@
        </property>
        <item>
         <widget class="QLabel" name="timeline_start">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>60</width>
+           <height>0</height>
+          </size>
+         </property>
          <property name="font">
           <font>
+           <family>Courier New</family>
            <pointsize>11</pointsize>
+           <bold>true</bold>
           </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: &quot;green&quot;</string>
          </property>
          <property name="text">
           <string/>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -472,7 +498,7 @@
           </font>
          </property>
          <property name="text">
-          <string/>
+          <string>IN</string>
          </property>
         </widget>
        </item>
@@ -494,19 +520,39 @@
           </font>
          </property>
          <property name="text">
-          <string/>
+          <string>OUT</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="timeline_duration">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>60</width>
+           <height>0</height>
+          </size>
+         </property>
          <property name="font">
           <font>
+           <family>Courier New</family>
            <pointsize>11</pointsize>
+           <bold>true</bold>
           </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: &quot;green&quot;</string>
          </property>
          <property name="text">
           <string/>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -734,7 +780,17 @@
     <addaction name="separator"/>
     <addaction name="menu_fullscreen"/>
    </widget>
+   <widget class="QMenu" name="menuTimeline">
+    <property name="title">
+     <string>Timeline</string>
+    </property>
+    <addaction name="timeline_frames"/>
+    <addaction name="timeline_time"/>
+    <addaction name="timeline_smpte"/>
+    <addaction name="separator"/>
+   </widget>
    <addaction name="menu"/>
+   <addaction name="menuTimeline"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="menu_play">
@@ -808,6 +864,42 @@
    </property>
    <property name="shortcut">
     <string>L</string>
+   </property>
+  </action>
+  <action name="timeline_frames">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Frames</string>
+   </property>
+   <property name="shortcut">
+    <string>R</string>
+   </property>
+  </action>
+  <action name="timeline_time">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Time</string>
+   </property>
+   <property name="shortcut">
+    <string>T</string>
+   </property>
+  </action>
+  <action name="timeline_smpte">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>SMTPE</string>
+   </property>
+   <property name="shortcut">
+    <string>S</string>
    </property>
   </action>
  </widget>

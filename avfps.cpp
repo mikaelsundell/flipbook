@@ -5,14 +5,16 @@
 
 #include <QVector>
 
-#include <QDebug>
-
 class AVFpsPrivate
 {
     public:
-        qint32 numerator = 0;
-        qint32 denominator = 1;
-        bool drop_frame;
+        struct Data
+        {
+            qint32 numerator = 0;
+            qint32 denominator = 0;
+            bool drop_frame = false;
+        };
+        Data d;
         QAtomicInt ref;
 };
 
@@ -24,9 +26,9 @@ AVFps::AVFps()
 AVFps::AVFps(qint32 numerator, qint32 denominator, bool drop_frame)
 : p(new AVFpsPrivate())
 {
-    p->numerator = numerator;
-    p->denominator = denominator;
-    p->drop_frame = drop_frame;
+    p->d.numerator = numerator;
+    p->d.denominator = denominator;
+    p->d.drop_frame = drop_frame;
 }
 
 AVFps::AVFps(const AVFps& other)
@@ -41,22 +43,20 @@ AVFps::~AVFps()
 qint64
 AVFps::numerator() const
 {
-    return p->numerator;
+    return p->d.numerator;
 }
 
 qint32
 AVFps::denominator() const
 {
-    return p->denominator;
+    return p->d.denominator;
 }
 
 bool
 AVFps::drop_frame() const
 {
-    return p->drop_frame;
+    return p->d.drop_frame;
 }
-
-
 
 qint16
 AVFps::frame_quanta() const
@@ -67,6 +67,8 @@ AVFps::frame_quanta() const
 qreal
 AVFps::real() const
 {
+    Q_ASSERT("fps is not valid" && valid());
+    
     return static_cast<qreal>(numerator()) / denominator();
 }
 
@@ -90,29 +92,29 @@ AVFps::to_string() const
 
 bool
 AVFps::valid() const {
-    return p->numerator > 0;
+    return p->d.denominator > 0;
 }
 
 void
 AVFps::set_numerator(qint32 numerator)
 {
-    if (p->numerator != numerator) {
+    if (p->d.numerator != numerator) {
         if (p->ref.loadRelaxed() > 1) {
             p.detach();
         }
-        p->numerator = numerator;
+        p->d.numerator = numerator;
     }
 }
 
 void
 AVFps::set_denominator(qint32 denominator)
 {
-    if (p->denominator != denominator) {
+    if (p->d.denominator != denominator) {
         if (denominator > 0) {
             if (p->ref.loadRelaxed() > 1) {
                 p.detach();
             }
-            p->denominator = denominator;
+            p->d.denominator = denominator;
         }
     }
 }
@@ -120,8 +122,8 @@ AVFps::set_denominator(qint32 denominator)
 void
 AVFps::set_dropframe(bool dropframe)
 {
-    if (p->drop_frame != dropframe) {
-        p->drop_frame = dropframe;
+    if (p->d.drop_frame != dropframe) {
+        p->d.drop_frame = dropframe;
     }
 }
 
@@ -137,9 +139,9 @@ AVFps::operator=(const AVFps& other)
 bool
 AVFps::operator==(const AVFps& other) const
 {
-    return p->numerator == other.p->numerator &&
-           p->denominator == other.p->denominator &&
-           p->drop_frame == other.p->drop_frame;
+    return p->d.numerator == other.p->d.numerator &&
+           p->d.denominator == other.p->d.denominator &&
+           p->d.drop_frame == other.p->d.drop_frame;
 }
 
 bool

@@ -15,8 +15,8 @@ class Timeline : public QWidget
 {
     Q_OBJECT
     public:
-        enum Units { TIMECODE, TIME, FRAMES };
-        Q_ENUM(Units)
+        enum Timecode { FRAMES, TIME, SMPTE };
+        Q_ENUM(Timecode)
         
     public:
         Timeline(QWidget* parent = nullptr);
@@ -25,18 +25,16 @@ class Timeline : public QWidget
         AVTimeRange range() const;
         AVTime time() const;
         bool tracking() const;
-        Units units() const;
+        Timecode timecode() const;
     
     public Q_SLOTS:
         void set_range(const AVTimeRange& range);
         void set_time(const AVTime& time);
         void set_tracking(bool tracking);
-        void set_units(Timeline::Units units);
+        void set_timecode(Timeline::Timecode timecode);
     
     Q_SIGNALS:
         void time_changed(const AVTime& time);
-        void timecode_changed(const AVSmpteTime& timecode);
-    
         void slider_moved(const AVTime& time); // todo: look into name here, good enough?
         void slider_pressed();
         void slider_released();

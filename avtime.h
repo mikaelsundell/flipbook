@@ -23,9 +23,11 @@ class AVTime
         qint64 ticks(qint64 frame) const;
         qint32 timescale() const;
         qint64 tpf() const;
+        qint64 frame(qint64 ticks) const;
         qint64 frames() const;
         qint64 align(qint64 ticks) const;
         qreal seconds() const;
+        QString to_string(qint64 ticks) const;
         QString to_string() const;
         void invalidate();
         bool valid() const;
@@ -45,7 +47,8 @@ class AVTime
         AVTime operator-(const AVTime& other) const;
     
         static AVTime convert(const AVTime& time, const AVFps& from, const AVFps& to);
-        static AVTime scale(AVTime time, qint32 timescale = 24000);
+        static AVTime timescale(const AVTime& time, const AVFps& to);
+        static AVTime timescale(const AVTime& time, qint32 timescale = 24000);
 
     private:
         QExplicitlySharedDataPointer<AVTimePrivate> p;

@@ -12,10 +12,11 @@
 #include <QtConcurrent>
 
 #include <QDebug>
+#include <iostream>
 
 void
 test_time() {
-    qDebug() << "Testing timer";
+    qDebug() << "Testing time";
     
     AVTime time;
     time.set_ticks(12000);
@@ -26,14 +27,47 @@ test_time() {
     Q_ASSERT("frame to ticks" && time.ticks(12) == 12000);
     
     qDebug() << "ticks per frame: " << time.tpf();
-    qDebug() << "ticks per frame: " << time.frames();
+    qDebug() << "ticks frames: " << time.frames();
     qDebug() << "frame to ticks: " << time.ticks(12);
+    
+    time.set_ticks(16016);
+    time.set_timescale(30000);
+    time.set_fps(AVFps::fps_29_97());
+    Q_ASSERT("ticks to frame" && time.frames() == 16);
+    
+    qDebug() << "ticks frames: " << time.frames();
+    
+    time = AVTime::timescale(time, 24000);
+    Q_ASSERT("ticks to frame" && time.frames() == 16);
+    Q_ASSERT("ticks to frame" && time.frame(time.ticks()) == 16);
+    Q_ASSERT("ticks align" && time.align(time.ticks()) == time.ticks());
+
+    qDebug() << "ticks: " << time.ticks();
+    qDebug() << "ticks frames: " << time.frames();
+    
+    time = AVTime::timescale(time, 30000);
+    qDebug() << "ticks: " << time.ticks();
+    Q_ASSERT("ticks" && time.ticks() == 16016);
+    
+    time = AVTime(time.ticks() + time.ticks(1), time.timescale(), time.fps());
+    Q_ASSERT("ticks align" && time.align(time.ticks()) == time.ticks());
+    
+    time.set_ticks(8677230);
+    time.set_timescale(90000);
+    time.set_fps(AVFps::fps_23_976());
+    
+    qDebug() << "frames: " << time.frames();
+    qDebug() << "ticks: " << time.ticks(time.frames() + 1);
+    
+    time.set_ticks(time.ticks(time.frames() + 1));
+    qDebug() << "frames: " << time.frames();
+    
 }
 
 void test_timerange() {
     AVTimeRange timerange;
     timerange.set_start(AVTime(12000, 24000, AVFps::fps_24()));
-    AVTime duration = AVTime::scale(AVTime(384000, 48000, AVFps::fps_24()), timerange.start().timescale());
+    AVTime duration = AVTime::timescale(AVTime(384000, 48000, AVFps::fps_24()), timerange.start().timescale());
     timerange.set_duration(duration);
     Q_ASSERT("convert timescale" && duration.ticks() == 192000);
     Q_ASSERT("end ticks" && timerange.end().ticks() == 204000);
@@ -76,6 +110,15 @@ void test_fps() {
     ticks = AVTime(time, fps24).ticks(1);
     Q_ASSERT("24 fps ticks" &&  ticks == 1000);
     qDebug() << "ticks 24: " << ticks;
+    
+    AVFps fps29_97 = AVFps::fps_29_97();
+    ticks = AVTime(time, fps29_97).ticks(2);
+    qDebug() << "ticks 29_97: " << ticks;
+    Q_ASSERT("29.97 fps ticks" &&  ticks == 1602);
+    
+    ticks = AVTime(time, fps29_97).ticks(5);
+    qDebug() << "ticks 29_97: " << ticks;
+    Q_ASSERT("29.97 fps ticks" &&  ticks == 4004);
 }
 
 void test_smpte() {
@@ -148,8 +191,8 @@ void test_smpte() {
     qDebug() << "seconds: " << time.seconds();
 
     smpte = AVSmpteTime(time);
-    Q_ASSERT("smpte is 02:10:29:07 for 24 fps" && smpte.to_string() == "02:10:29:07");
-    qDebug() << "smpte 24 fps: " << smpte.to_string();;
+    Q_ASSERT("smpte is 02:10:29:08 for 24 fps" && smpte.to_string() == "02:10:29:08"); // *:08 equals 8/24 of a second = .344000
+    qDebug() << "smpte 24 fps: " << smpte.to_string();
     
     // resolve data:
     // frame: 87040, converted to 87148 at fps: 23.967
@@ -176,8 +219,8 @@ void test_timer() {
         AVTimeRange range(AVTime(start, fps), AVTime(duration, fps));
         AVTimer totaltimer;
         totaltimer.start();
-        AVTimer timer(fps);
-        timer.start();
+        AVTimer timer;
+        timer.start(fps);
         
         qDebug() << "range: start:" << range.start().frames() << ", duration: " << range.duration().frames();
         qint64 frames = range.duration().frames();
@@ -195,7 +238,7 @@ void test_timer() {
             qDebug() << "frame[" << frame << "/" << frames << "]:" << elapsed << "|"
                      << "deviation:" << deviation << "," << "%:" << (deviation / fps.seconds()) * 100 << ", delay: " << delay;
             
-            while (!timer.next()) {
+            while (!timer.next(fps)) {
                 frame++;
                 dropped++;
                 qDebug() << "drop frame[" << frame << "] total frames dropped: " << dropped << ", previous delay: " << delay;

@@ -21,33 +21,34 @@ class AVTimerPrivate
     public:
         AVTimerPrivate();
         ~AVTimerPrivate();
-        quint64 to_nano(const AVFps& fps) {
+        quint64 nano(const AVFps& fps) {
             return static_cast<quint64>((1e9 * fps.denominator()) / fps.numerator());
         }
-        quint64 to_nano(quint64 ticks) {
-            return (ticks * timebase.numer) / timebase.denom;
+        quint64 nano(quint64 ticks) {
+            return (ticks * d.timebase.numer) / d.timebase.denom;
         }
-        quint64 to_ticks(quint64 time) {
-            return (time * timebase.denom) / timebase.numer;
+        quint64 ticks(quint64 time) {
+            return (time * d.timebase.denom) / d.timebase.numer;
         }
         quint64 elapsed() {
-            quint64 end = stop > 0 ? stop : mach_absolute_time();
-            return (end - start) * timebase.numer / timebase.denom;
+            quint64 end = d.stop > 0 ? d.stop : mach_absolute_time();
+            return (end - d.start) * d.timebase.numer / d.timebase.denom;
         }
-        quint64 start;
-        quint64 stop;
-        quint64 next;
-        quint64 interval;
-        QList<quint64> laps;
-        AVFps fps;
-        mach_timebase_info_data_t timebase;
+        struct Data
+        {
+            quint64 start = 0;
+            quint64 stop = 0;
+            quint64 timer = 0;
+            quint64 next = 0;
+            QList<quint64> laps;
+            mach_timebase_info_data_t timebase;
+        };
+        Data d;
 };
 
 AVTimerPrivate::AVTimerPrivate()
-: start(0)
-, stop(0)
 {
-    mach_timebase_info(&timebase);
+    mach_timebase_info(&d.timebase);
 }
 
 AVTimerPrivate::~AVTimerPrivate()
@@ -61,12 +62,6 @@ AVTimer::AVTimer()
 {
 }
 
-AVTimer::AVTimer(const AVFps& fps)
-: p(new AVTimerPrivate())
-{
-    p->fps = fps;
-}
-
 AVTimer::~AVTimer()
 {
 }
@@ -74,45 +69,59 @@ AVTimer::~AVTimer()
 void
 AVTimer::start()
 {
-    Q_ASSERT("fps is zero" && p->fps.seconds() > 0);
-    p->start = mach_absolute_time();
-    p->next = p->start + p->to_ticks(p->to_nano(p->fps));
-    p->stop = 0;
+    p->d.start = mach_absolute_time();
+    p->d.stop = 0;
+}
+
+void
+AVTimer::start(const AVFps& fps)
+{
+    Q_ASSERT("fps is zero" && fps.seconds() > 0);
+    
+    p->d.timer = mach_absolute_time();
+    p->d.next = p->d.timer + p->ticks(p->nano(fps));
+    p->d.stop = 0;
 }
 
 void
 AVTimer::stop()
 {
-    p->stop = mach_absolute_time();
-    p->next = p->stop;
+    p->d.stop = mach_absolute_time();
+    p->d.next = p->d.stop;
 }
 
 void
 AVTimer::restart()
 {
-    p->laps.clear();
+    p->d.laps.clear();
     start();
 }
 
 void
 AVTimer::lap()
 {
-    p->laps.append(elapsed());
+    if (!p->d.laps.isEmpty()) {
+        p->d.laps.append(elapsed() - p->d.laps.last());
+    }
+    else {
+        p->d.laps.append(elapsed());
+    }
 }
 
 bool
-AVTimer::next()
+AVTimer::next(const AVFps& fps)
 {
     quint64 currenttime = mach_absolute_time();
-    p->next += p->to_ticks(p->to_nano(p->fps));
-    return p->next > currenttime;
+    p->d.next += p->ticks(p->nano(fps));
+    return p->d.next > currenttime;
 }
 
 void 
 AVTimer::wait()
 {
-    Q_ASSERT("start time must be less than nexttime" && p->start < p->next);
-    mach_wait_until(p->next);
+    Q_ASSERT("start time must be less than nexttime" && p->d.start < p->d.next);
+    
+    mach_wait_until(p->d.next);
 }
 
 void
@@ -120,7 +129,7 @@ AVTimer::sleep(quint64 msecs)
 {
     quint64 sleeptime = static_cast<quint64>(msecs * 1e6);
     quint64 currenttime = mach_absolute_time();
-    quint64 targettime = currenttime + p->to_ticks(sleeptime);
+    quint64 targettime = currenttime + p->ticks(sleeptime);
     
     Q_ASSERT("sleep time already passed" && currenttime < targettime);
     mach_wait_until(targettime);
@@ -129,22 +138,14 @@ AVTimer::sleep(quint64 msecs)
 quint64
 AVTimer::elapsed() const
 {
-    quint64 end = p->stop > 0 ? p->stop : mach_absolute_time();
-    return p->to_nano(end - p->start);
+    quint64 end = p->d.stop > 0 ? p->d.stop : mach_absolute_time();
+    return p->nano(end - p->d.start);
 }
 
 QList<quint64>
 AVTimer::laps() const
 {
-    return p->laps;
-}
-
-void
-AVTimer::set_fps(const AVFps& fps)
-{
-    if (p->fps != fps) {
-        p->fps = fps;
-    }
+    return p->d.laps;
 }
 
 qreal

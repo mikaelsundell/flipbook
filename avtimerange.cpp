@@ -8,8 +8,12 @@
 class AVTimeRangePrivate
 {
     public:
-        AVTime start;
-        AVTime duration;
+        struct Data
+        {
+            AVTime start;
+            AVTime duration;
+        };
+        Data d;
         QAtomicInt ref;
 };
 
@@ -22,8 +26,9 @@ AVTimeRange::AVTimeRange(AVTime start, AVTime duration)
 : p(new AVTimeRangePrivate())
 {
     Q_ASSERT(start.timescale() == duration.timescale());
-    p->start = start;
-    p->duration = duration;
+    
+    p->d.start = start;
+    p->d.duration = duration;
 }
 
 AVTimeRange::AVTimeRange(const AVTimeRange& other)
@@ -36,18 +41,21 @@ AVTimeRange::~AVTimeRange()
 }
 
 AVTime
-AVTimeRange::start() const {
-    return p->start;
+AVTimeRange::start() const
+{
+    return p->d.start;
 }
 
 AVTime
-AVTimeRange::duration() const {
-    return p->duration;
+AVTimeRange::duration() const
+{
+    return p->d.duration;
 }
 
 AVTime
-AVTimeRange::end() const {
-    return p->start + p->duration;
+AVTimeRange::end() const
+{
+    return p->d.start + p->d.duration;
 }
 
 AVTime
@@ -76,7 +84,7 @@ AVTimeRange::bound(const AVTime& time, bool loop)
 QString
 AVTimeRange::to_string() const
 {
-    return QString("%1 / %2").arg(p->start.to_string()).arg(p->duration.to_string());
+    return QString("%1 / %2").arg(p->d.start.to_string()).arg(p->d.duration.to_string());
 }
 
 void
@@ -85,13 +93,13 @@ AVTimeRange::invalidate()
     if (p->ref.loadRelaxed() > 1) {
         p.detach();
     }
-    p->start.invalidate();
-    p->duration.invalidate();
+    p->d.start.invalidate();
+    p->d.duration.invalidate();
 }
 
 bool
 AVTimeRange::valid() const {
-    return p->start.valid() && p->duration.valid() && p->duration.ticks() > 0;
+    return p->d.start.valid() && p->d.duration.valid() && p->d.duration.ticks() > 0;
 }
 
 void
@@ -100,7 +108,7 @@ AVTimeRange::set_start(AVTime start)
     if (p->ref.loadRelaxed() > 1) {
         p.detach();
     }
-    p->start = start;
+    p->d.start = start;
 }
 
 void
@@ -109,7 +117,7 @@ AVTimeRange::set_duration(AVTime duration)
     if (p->ref.loadRelaxed() > 1) {
         p.detach();
     }
-    p->duration = duration;
+    p->d.duration = duration;
 }
 
 AVTimeRange&
@@ -124,7 +132,7 @@ AVTimeRange::operator=(const AVTimeRange& other)
 bool
 AVTimeRange::operator==(const AVTimeRange& other) const
 {
-    return p->start == other.p->start && p->duration == other.p->duration;
+    return p->d.start == other.p->d.start && p->d.duration == other.p->d.duration;
 }
 
 bool
@@ -134,7 +142,13 @@ AVTimeRange::operator!=(const AVTimeRange& other) const
 }
 
 AVTimeRange
-AVTimeRange::scale(AVTimeRange timerange, qint32 timescale)
+AVTimeRange::timescale(const AVTimeRange& timerange, const AVFps& to)
 {
-    return AVTimeRange(AVTime::scale(timerange.start(), timescale), AVTime::scale(timerange.duration(), timescale));
+    return AVTimeRange(AVTime::timescale(timerange.start(), to), AVTime::timescale(timerange.duration(), to));
+}
+
+AVTimeRange
+AVTimeRange::timescale(const AVTimeRange& timerange, qint32 timescale)
+{
+    return AVTimeRange(AVTime::timescale(timerange.start(), timescale), AVTime::timescale(timerange.duration(), timescale));
 }

@@ -30,19 +30,21 @@ class AVReader : public QObject {
         bool is_open() const;
         bool is_closed() const;
         bool is_streaming() const;
+        bool is_supported(const QString& extension) const;
         QString filename() const;
         QString title() const;
         AVTimeRange range() const;
         AVTime time() const;
         AVFps fps() const;
         bool loop() const;
-        AVSmpteTime timecode() const;
+        AVSmpteTime smptetime() const;
         AVSmpteTime start() const;
         AVMetadata metadata();
         AVSidecar sidecar();
+        QList<QString> extensions() const;
         AVReader::Error error() const;
         QString error_message() const;
-    
+
     public Q_SLOTS:
         void set_loop(bool loop);
         void set_everyframe(bool everyframe);
@@ -53,7 +55,7 @@ class AVReader : public QObject {
     Q_SIGNALS:
         void opened(const QString& filename);
         void time_changed(const AVTime& time);
-        void timecode_changed(const AVSmpteTime& timecode);
+        void smptetime_changed(const AVSmpteTime& timecode);
         void range_changed(const AVTimeRange& timerange);
         void video_changed(const QImage& image);
         void audio_changed(const QByteArray& buffer);

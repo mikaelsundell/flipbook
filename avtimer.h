@@ -16,20 +16,17 @@ class AVTimer : public QObject {
         Q_ENUM(Unit)
     public:
         AVTimer();
-        AVTimer(const AVFps& fps);
         virtual ~AVTimer();
         void start();
+        void start(const AVFps& fps);
         void stop();
         void restart();
         void lap();
-        bool next();
+        bool next(const AVFps& fps);
         void wait();
         void sleep(quint64 msecs);
-        AVFps fps() const;
         quint64 elapsed() const;
         QList<quint64> laps() const;
-
-        void set_fps(const AVFps& fps);
     
         static qreal convert(quint64 nano, Unit unit = Unit::NANOS);
 

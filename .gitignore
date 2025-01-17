@@ -1,3 +1,4 @@
 .vscode/*
 ._*
+.DS_Store
 build/*

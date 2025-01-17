@@ -29,7 +29,7 @@ class AVReaderPrivate
         void stream();
     
     public:
-        AVSmpteTime timecode() const
+        AVSmpteTime smptetime() const
         {
             return AVSmpteTime::combine(timestamp, startcode.time());
         }
@@ -45,6 +45,7 @@ class AVReaderPrivate
         AVTime timestamp;
         AVTime ptstamp;
         AVFps fps;
+        qint32 timescale;
         QString filename;
         QString title;
         std::atomic<bool> loop;
@@ -52,6 +53,7 @@ class AVReaderPrivate
         std::atomic<bool> streaming;
         AVMetadata metadata;
         AVSidecar sidecar;
+        QList<QString> extensions;
         QString errormessage;
         AVReader::Error error;
         QPointer<AVReader> object;
@@ -62,6 +64,9 @@ AVReaderPrivate::AVReaderPrivate()
 , everyframe(false)
 , streaming(false)
 {
+    extensions = {
+        "mov", "mp4", "m4v", "avi", "mkv", "flv", "mpg", "mpeg", "3gp", "3g2", "mxf", "wmv"
+    };
 }
 
 AVReaderPrivate::~AVReaderPrivate()
@@ -135,7 +140,7 @@ AVReaderPrivate::open()
         qWarning() << "warning: " << errormessage;
         return false;
     }
-    NSArray *formats = [videotrack formatDescriptions];
+    NSArray* formats = [videotrack formatDescriptions];
     for (id formatDesc in formats) {
         CMFormatDescriptionRef desc = (__bridge CMFormatDescriptionRef)formatDesc;
         CMMediaType mediaType = CMFormatDescriptionGetMediaType(desc);
@@ -158,7 +163,7 @@ AVReaderPrivate::open()
     CMTime minduration = videotrack.minFrameDuration; // skip nominal frame rate for precision
     qreal duration = static_cast<qreal>(minduration.value) / minduration.timescale;
     fps = AVFps::guess(1.0 / duration);
-    timerange = AVTimeRange::scale(to_timerange(videotrack.timeRange));
+    timerange = AVTimeRange::timescale(to_timerange(videotrack.timeRange), fps);
     timestamp = timerange.start();
     AVAssetTrack* timecodetrack = [[asset tracksWithMediaType:AVMediaTypeTimecode] firstObject];
     if (timecodetrack) {
@@ -303,7 +308,7 @@ AVReaderPrivate::read()
                  static_cast<int>(bytes),
                  QImage::Format_ARGB32);
     CVPixelBufferUnlockBaseAddress(imagebuffer, kCVPixelBufferLock_ReadOnly);
-    ptstamp = AVTime::scale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)));
+    ptstamp = AVTime::timescale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)), fps);
     Q_ASSERT("read timestamp and ptstamp does not match" && timestamp == ptstamp);
     CFRelease(samplebuffer);
     object->video_changed(image.copy());
@@ -313,10 +318,9 @@ void
 AVReaderPrivate::drop()
 {
     Q_ASSERT(reader || reader.status != AVAssetReaderStatusReading);
-
+    
     CMSampleBufferRef samplebuffer = [videooutput copyNextSampleBuffer];
-    ptstamp = AVTime::scale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)));
-    Q_ASSERT("drop timestamp and ptstamp does not match" && timestamp == ptstamp);
+    ptstamp = AVTime::timescale(to_time(CMSampleBufferGetPresentationTimeStamp(samplebuffer)), fps);
     CFRelease(samplebuffer);
 }
 
@@ -367,7 +371,7 @@ AVReaderPrivate::seek(const AVTime& time)
         return;
     }
     object->time_changed(timestamp);
-    object->timecode_changed(timecode());
+    object->smptetime_changed(smptetime());
 }
 
 void
@@ -376,7 +380,6 @@ AVReaderPrivate::stream()
     streaming = true;
     object->stream_changed(streaming);
     QThread::currentThread()->setPriority(QThread::TimeCriticalPriority);
-    
     AVTimer statstimer;
     statstimer.start();
     
@@ -394,8 +397,8 @@ AVReaderPrivate::stream()
         seek(timestamp);
         statstimer.lap();
 
-        AVTimer frametimer(fps);
-        frametimer.start();
+        AVTimer frametimer;
+        frametimer.start(fps);
         for (frame = start; frame < duration; frame++) {
             if (!streaming) {
                 break;
@@ -404,11 +407,10 @@ AVReaderPrivate::stream()
             read();
             
             object->time_changed(timestamp);
-            object->timecode_changed(object->timecode());
+            object->smptetime_changed(object->smptetime());
             fpsframes++;
             frametimer.wait();
-            
-            while (!frametimer.next() && !everyframe) {
+            while (!frametimer.next(fps) && !everyframe) {
                 frame++;
                 fpsframes++;
                 droppedframes++;
@@ -522,6 +524,12 @@ AVReader::is_streaming() const
     return p->streaming;
 }
 
+bool
+AVReader::is_supported(const QString& extension) const
+{
+    return p->extensions.contains(extension.toLower());
+}
+
 QString
 AVReader::filename() const
 {
@@ -559,21 +567,15 @@ AVReader::loop() const
 }
 
 AVSmpteTime
-AVReader::timecode() const
+AVReader::smptetime() const
 {
-    return p->timecode();
+    return p->smptetime();
 }
 
-AVReader::Error
-AVReader::error() const
+QList<QString>
+AVReader::extensions() const
 {
-    return p->error;
-}
-
-QString
-AVReader::error_message() const
-{
-    return p->errormessage;
+    return p->extensions;
 }
 
 AVMetadata
@@ -586,6 +588,18 @@ AVSidecar
 AVReader::sidecar()
 {
     return p->sidecar;
+}
+
+AVReader::Error
+AVReader::error() const
+{
+    return p->error;
+}
+
+QString
+AVReader::error_message() const
+{
+    return p->errormessage;
 }
 
 void

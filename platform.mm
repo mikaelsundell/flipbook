@@ -21,12 +21,14 @@ class PlatformPrivate
         PlatformPrivate();
         ~PlatformPrivate();
         void init();
-        static void power_callback(void* refCon, io_service_t service, natural_t messageType, void* messageArgument);
-
-    public:
-        id activity = nullptr;
-        IONotificationPortRef notificationport = nullptr;
-        io_object_t notifier = 0;
+        static void power_callback(void* refcon, io_service_t service, natural_t message_type, void* message);
+        struct Data
+        {
+            id activity = nullptr;
+            IONotificationPortRef notificationport = nullptr;
+            io_object_t notifier = 0;
+        };
+        Data d;
         QPointer<Platform> object;
 };
 
@@ -36,35 +38,35 @@ PlatformPrivate::PlatformPrivate()
 
 PlatformPrivate::~PlatformPrivate()
 {
-    if (notificationport) {
-        IONotificationPortDestroy(notificationport);
+    if (d.notificationport) {
+        IONotificationPortDestroy(d.notificationport);
     }
-    if (notifier) {
-        IODeregisterForSystemPower(&notifier);
+    if (d.notifier) {
+        IODeregisterForSystemPower(&d.notifier);
     }
 }
 
 void
 PlatformPrivate::init()
 {
-    io_connect_t rootport = IORegisterForSystemPower(this, &notificationport, power_callback, &notifier);
+    io_connect_t rootport = IORegisterForSystemPower(this, &d.notificationport, power_callback, &d.notifier);
     if (rootport == MACH_PORT_NULL) {
         qWarning() << "failed to register for system power notifications.";
         return;
     }
-    CFRunLoopSourceRef runloopsource = IONotificationPortGetRunLoopSource(notificationport);
+    CFRunLoopSourceRef runloopsource = IONotificationPortGetRunLoopSource(d.notificationport);
     CFRunLoopAddSource(CFRunLoopGetCurrent(), runloopsource, kCFRunLoopDefaultMode);
     [NSApp setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]]; // force dark aque appearance
 }
 
 void
-PlatformPrivate::power_callback(void* refcon, io_service_t service, natural_t messagetype, void* message)
+PlatformPrivate::power_callback(void* refcon, io_service_t service, natural_t message_type, void* message)
 {
     PlatformPrivate* platformprivate = static_cast<PlatformPrivate*>(refcon);
     if (!platformprivate || !platformprivate->object) {
         return;
     }
-    switch (messagetype) {
+    switch (message_type) {
         case kIOMessageSystemWillPowerOff:
             platformprivate->object->power_changed(Platform::POWEROFF);
             break;

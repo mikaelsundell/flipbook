@@ -31,7 +31,8 @@ class AVTimeRange
         bool operator==(const AVTimeRange& other) const;
         bool operator!=(const AVTimeRange& other) const;
     
-        static AVTimeRange scale(AVTimeRange timerange, qint32 timescale = 24000);
+        static AVTimeRange timescale(const AVTimeRange& timerange, const AVFps& to);
+        static AVTimeRange timescale(const AVTimeRange& timerange, qint32 timescale = 24000);
     
     private:
         QExplicitlySharedDataPointer<AVTimeRangePrivate> p;
