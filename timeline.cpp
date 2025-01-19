@@ -22,22 +22,27 @@ class TimelinePrivate
         QString labeltick(qint64 ticks) const;
         QSize labelsize(const QFont& font, qint64 ticks) const;
         qint64 ticks(qint64 value) const;
+    
         qint64 steps(qint64 value);
+        qint64 substeps(qint64 steps) const;
+    
         QList<qint64> subticks(qint64 value, qint64 steps, qint64 duration) const;
+    
+    
         void paint_tick(QPainter& p, int x, int y, int height, qreal width = 1, QBrush brush = Qt::white);
         void paint_text(QPainter& p, int x, int y, qint64 value, qint64 start, qint64 duration, bool bold = false, QBrush brush = Qt::white);
         void paint_timeline(QPainter& p);
         QPixmap paint();
-        struct Metric
+        struct Time
         {
-            qint64 major;
-            int majorheight;
-            qint64 minor;
-            int minorheight;
-            qint64 ticks;
-            int ticksheight;
+            qint64 hour;
+            int hourheight;
+            qint64 minutes;
+            int minutesheight;
+            qint64 seconds;
+            int secondsheight;
         };
-        Metric m;
+        Time t;
         struct Data
         {
             AVTime time;
@@ -138,6 +143,17 @@ TimelinePrivate::steps(qint64 value) {
     return pow(10, qint64(log10(value)));
 }
 
+qint64
+TimelinePrivate::substeps(qint64 steps) const
+{
+    if (d.timecode == Timeline::Timecode::FRAMES)  {
+        return qRound(steps * 0.2);
+    }
+    else if (d.timecode == Timeline::Timecode::TIME) {
+        return qRound(steps * 0.25);
+    }
+}
+
 QList<qint64>
 TimelinePrivate::subticks(qint64 value, qint64 steps, qint64 duration) const
 {
@@ -211,78 +227,69 @@ TimelinePrivate::paint_timeline(QPainter& p)
     
     qint64 start = d.range.start().ticks();
     qint64 duration = d.range.duration().ticks();
-    QSize maxsize = labelsize(font, duration);
+
+    int maxwidth = labelsize(font, duration).width();
     qint64 mindist = 4;
-    qreal margin = 0.8;
+    qreal margin = 0.95;
     
-    qint64 majorsteps = ticks(m.major);
-    int majorwidth = mapToWidth(majorsteps);
-    bool majorlabels = maxsize.width() < (majorwidth * margin);
-    bool majorvisible = majorsteps && majorwidth > mindist;
-    
-    if (majorvisible) {
-        for(qint64 major = start; major < duration; major += majorsteps) {
-            int x = mapToX(major);
-            paint_tick(p, x, y, m.majorheight, 2);
-            if (majorlabels) {
-                paint_text(p, x, y, major, start, duration, true);
+    qint64 hoursteps = ticks(t.hour);
+    if (hoursteps) {
+        for(qint64 hour = start; hour < duration; hour += hoursteps) {
+            int x = mapToX(hour);
+            paint_tick(p, x, y, t.hourheight, 2);
+            if (mapToWidth(hoursteps) * margin > maxwidth) {
+                paint_text(p, x, y, hour, start, duration, true);
             }
-            qint64 minorsteps = ticks(m.minor);
-            int minorwidth = mapToWidth(minorsteps);
-            bool minorlabels = maxsize.width() < (minorwidth * margin);
-            bool minorvisible = minorsteps && minorwidth > mindist;
             
-            if (minorvisible) {
-                for (qint64 minor = major; minor < (major + majorsteps) && minor < duration; minor += minorsteps) {
-                    int x = mapToX(minor);
-                    paint_tick(p, x, y, m.minorheight, 1);
-                    if (minorlabels && minor > major) {
-                        paint_text(p, x, y, minor, start, duration);
-                    }
-                    qint64 ticksteps = ticks(m.ticks);
-                    int tickswidth = mapToWidth(ticksteps);
-                    int tickslabels = maxsize.width() < (tickswidth * margin);
-                    bool ticksvisible = ticksteps && tickswidth > mindist;
-                    
-                    if (ticksvisible) {
-                        for (qint64 tick = minor; tick < (minor + minorsteps) && tick < duration; tick += ticksteps) {
-                            int x = mapToX(tick);
-                            paint_tick(p, x, y, m.ticksheight, 1);
-                            if (tickslabels && tick > minor) {
-                                paint_text(p, x, y, tick, start, duration);
+            qint64 minutessteps = ticks(t.minutes);
+            if (minutessteps) {
+                qint64 minutesubsteps = 0;
+                if (!(mapToWidth(minutessteps) * margin > maxwidth)) {
+                    minutesubsteps = substeps(hoursteps);
+                }
+                for (qint64 minute = hour; minute < (hour + hoursteps) && minute < duration; minute += minutessteps) {
+                    int x = mapToX(minute);
+                    if (minutesubsteps > 0) {
+                        if (minute % minutesubsteps == 0) {
+                            if (mapToWidth(minutesubsteps) > mindist) {
+                                paint_tick(p, x, y, t.minutesheight);
+                            }
+                            if (mapToWidth(minutesubsteps) * margin > maxwidth) {
+                                paint_text(p, x, y, minute, start, duration);
                             }
                         }
+                        if (mapToWidth(minutessteps) > mindist) {
+                            paint_tick(p, x, y, t.minutesheight);
+                        }
                     }
-                    if (!tickslabels && ticksteps) {
-                        QList<qint64> ticks = subticks(minor, minorsteps, duration);
-                        if (ticks.size()) {
-                            int tickswidth = mapToWidth(ticks.first() - minor);
-                            if (tickswidth > mindist) {
-                                for (qint64 tick : ticks) {
-                                    int x = mapToX(tick);
-                                    if (!ticksvisible) {
-                                        paint_tick(p, x, y, m.ticksheight, 1);
+                    else {
+                        paint_tick(p, x, y, t.minutesheight);
+                        paint_text(p, x, y, minute, start, duration);
+                    }
+                    
+                    qint64 secondssteps = ticks(t.seconds);
+                    if (secondssteps) {
+                        qint64 secondssubsteps = 0;
+                        if (!(mapToWidth(secondssteps) * margin > maxwidth)) {
+                            secondssubsteps = substeps(minutessteps);
+                        }
+                        for (qint64 tick = minute; tick < (minute + minutessteps) && tick < duration; tick += secondssteps) {
+                            int x = mapToX(tick);
+                            if (secondssubsteps > 0) {
+                                if (tick % secondssubsteps == 0) {
+                                    if (mapToWidth(secondssubsteps) > mindist) {
+                                        paint_tick(p, x, y, t.secondsheight);
                                     }
-                                    if ((maxsize.width()) < tickswidth * margin) {
-                                        paint_text(p, x, y, tick, start, duration, Qt::darkMagenta);
+                                    if (mapToWidth(secondssubsteps) * margin > maxwidth) {
+                                        paint_text(p, x, y, tick, start, duration);
                                     }
                                 }
+                                if (mapToWidth(secondssteps) > mindist) {
+                                    paint_tick(p, x, y, t.secondsheight);
+                                }
                             }
-                        }
-                    }
-                }
-            }
-            if (!minorlabels && minorsteps) { // test subticks
-                QList<qint64> ticks = subticks(major, majorsteps, duration);
-                if (ticks.size()) {
-                    int tickswidth = mapToWidth(ticks.first() - major);
-                    if (tickswidth > mindist) {
-                        for (qint64 tick : ticks) {
-                            int x = mapToX(tick);
-                            if (!minorvisible) {
-                                paint_tick(p, x, y, m.minorheight, 1);
-                            }
-                            if (maxsize.width() < tickswidth * margin) {
+                            else {
+                                paint_tick(p, x, y, t.secondsheight);
                                 paint_text(p, x, y, tick, start, duration);
                             }
                         }
@@ -327,7 +334,7 @@ TimelinePrivate::paint()
 
             if (d.timecode == Timeline::Timecode::FRAMES) {
                 qint64 frames = d.range.duration().frames();
-                m = Metric {
+                t = Time { // redistribute to frames
                     steps(frames),
                     4,
                     steps(frames) / 10,
@@ -341,7 +348,7 @@ TimelinePrivate::paint()
                 qint64 minutes = seconds / 60;
                 qint64 hours = minutes / 60;
                 if (hours > 0) {
-                    m = Metric {
+                    t = Time {
                         60 * 60,
                         4,
                         60,
@@ -351,7 +358,7 @@ TimelinePrivate::paint()
                     };
                 }
                 else if (minutes > 0) {
-                    m = Metric {
+                    t = Time { // redistribute to mins
                         60,
                         4,
                         1,
@@ -361,7 +368,7 @@ TimelinePrivate::paint()
                     };
                 }
                 else {
-                    m = Metric {
+                    t = Time { // redistribute to secs
                         1,
                         2,
                         0,

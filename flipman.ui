@@ -480,7 +480,7 @@
           </font>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: &quot;green&quot;</string>
+          <string notr="true">background-color: &quot;darkgreen&quot;</string>
          </property>
          <property name="text">
           <string/>
@@ -546,7 +546,7 @@
           </font>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: &quot;green&quot;</string>
+          <string notr="true">background-color: &quot;darkgreen&quot;</string>
          </property>
          <property name="text">
           <string/>
@@ -761,7 +761,7 @@
      <x>0</x>
      <y>0</y>
      <width>1161</width>
-     <height>24</height>
+     <height>37</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
