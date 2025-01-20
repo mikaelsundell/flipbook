@@ -468,19 +468,25 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>60</width>
+           <width>100</width>
            <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
           </size>
          </property>
          <property name="font">
           <font>
            <family>Courier New</family>
-           <pointsize>11</pointsize>
+           <pointsize>10</pointsize>
            <bold>true</bold>
           </font>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: &quot;darkgreen&quot;</string>
+          <string notr="true">background-color: &quot;dimgray&quot;</string>
          </property>
          <property name="text">
           <string/>
@@ -534,19 +540,19 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>60</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>
          <property name="font">
           <font>
            <family>Courier New</family>
-           <pointsize>11</pointsize>
+           <pointsize>10</pointsize>
            <bold>true</bold>
           </font>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: &quot;darkgreen&quot;</string>
+          <string notr="true">background-color: &quot;dimgray&quot;</string>
          </property>
          <property name="text">
           <string/>

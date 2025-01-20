@@ -74,10 +74,16 @@ AVTime::AVTime(qreal seconds, const AVFps& fps)
     p->d.ticks = p->d.timescale * seconds;
 }
 
+AVTime::AVTime(const AVTime& other, qint64 ticks)
+: p(other.p)
+{
+    set_ticks(ticks);
+}
+
 AVTime::AVTime(const AVTime& other, const AVFps& fps)
 : p(other.p)
 {
-    p->d.fps = fps;
+    set_fps(fps);
 }
 
 AVTime::AVTime(const AVTime& other)

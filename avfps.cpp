@@ -177,7 +177,7 @@ AVFps::operator double() const
 AVFps
 AVFps::guess(qreal fps)
 {
-    const qreal epsilon = 0.002;
+    const qreal epsilon = 0.005;
     const QVector<AVFps> standards = {
         fps_23_976(),
         fps_24(),

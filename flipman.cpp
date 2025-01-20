@@ -554,6 +554,10 @@ FlipmanPrivate::set_time(const AVTime& time)
         ui->timeline_start->setText(time.to_string());
         ui->timeline_duration->setText(reader->range().duration().to_string());
     }
+    else if (ui->timeline->timecode() == Timeline::Timecode::SMPTE) {
+        ui->timeline_start->setText(AVSmpteTime(time).to_string());
+        ui->timeline_duration->setText(AVSmpteTime(reader->range().duration()).to_string());
+    }
 }
 
 void
