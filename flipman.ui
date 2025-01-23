@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1161</width>
+    <width>1160</width>
     <height>600</height>
    </rect>
   </property>
@@ -233,22 +233,19 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="smptetime">
+        <widget class="Timeedit" name="timecode" native="true">
          <property name="minimumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>
          <property name="font">
           <font>
            <family>Courier New</family>
-           <pointsize>11</pointsize>
+           <pointsize>13</pointsize>
            <bold>true</bold>
           </font>
-         </property>
-         <property name="text">
-          <string>00:00:00:00</string>
          </property>
         </widget>
        </item>
@@ -454,6 +451,11 @@
     </item>
     <item>
      <widget class="QWidget" name="timeline_widget" native="true">
+      <property name="font">
+       <font>
+        <pointsize>12</pointsize>
+       </font>
+      </property>
       <property name="styleSheet">
        <string notr="true">background-color: gray;</string>
       </property>
@@ -471,52 +473,22 @@
         <number>4</number>
        </property>
        <item>
-        <widget class="QLabel" name="timeline_start">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
+        <widget class="Timeedit" name="timeline_start" native="true">
          <property name="minimumSize">
           <size>
            <width>90</width>
            <height>0</height>
           </size>
          </property>
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>16777215</height>
-          </size>
-         </property>
          <property name="font">
           <font>
            <family>Courier New</family>
-           <pointsize>10</pointsize>
+           <pointsize>12</pointsize>
            <bold>true</bold>
           </font>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: &quot;dimgray&quot;</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="timeline_in">
-         <property name="font">
-          <font>
-           <pointsize>11</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string>IN</string>
+          <string notr="true">background-color: dimgray;</string>
          </property>
         </widget>
        </item>
@@ -531,25 +503,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="timeline_out">
-         <property name="font">
-          <font>
-           <pointsize>11</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string>OUT</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="timeline_duration">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
+        <widget class="Timeedit" name="timeline_duration" native="true">
          <property name="minimumSize">
           <size>
            <width>90</width>
@@ -559,18 +513,12 @@
          <property name="font">
           <font>
            <family>Courier New</family>
-           <pointsize>10</pointsize>
+           <pointsize>12</pointsize>
            <bold>true</bold>
           </font>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: &quot;dimgray&quot;</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignCenter</set>
+          <string notr="true">background-color: dimgray;</string>
          </property>
         </widget>
        </item>
@@ -607,6 +555,154 @@
           <string notr="true">background-color: black</string>
          </property>
         </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="statistics_widget" native="true">
+      <property name="styleSheet">
+       <string notr="true">background-color: gray;</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_6">
+       <property name="leftMargin">
+        <number>4</number>
+       </property>
+       <property name="topMargin">
+        <number>4</number>
+       </property>
+       <property name="rightMargin">
+        <number>4</number>
+       </property>
+       <property name="bottomMargin">
+        <number>4</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="label_2">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Timeline timecode</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="timeline_timecode">
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Courier New</family>
+           <pointsize>11</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: darkblue;</string>
+         </property>
+         <property name="text">
+          <string>00:00:00:00</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Timeline frame</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="timeline_frame">
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Courier New</family>
+           <pointsize>11</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: darkblue;</string>
+         </property>
+         <property name="text">
+          <string>0</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_4">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Time timecode</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="time_timecode">
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Courier New</family>
+           <pointsize>11</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: darkblue;</string>
+         </property>
+         <property name="text">
+          <string>00:00:00:00</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_5">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
@@ -778,7 +874,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1161</width>
+     <width>1160</width>
      <height>37</height>
     </rect>
    </property>
@@ -789,9 +885,11 @@
     <addaction name="menu_open"/>
     <addaction name="separator"/>
     <addaction name="menu_start"/>
+    <addaction name="menu_previous10"/>
     <addaction name="menu_previous"/>
     <addaction name="menu_play"/>
     <addaction name="menu_next"/>
+    <addaction name="menu_next10"/>
     <addaction name="menu_end"/>
     <addaction name="separator"/>
     <addaction name="menu_loop"/>
@@ -806,9 +904,20 @@
     <addaction name="timeline_time"/>
     <addaction name="timeline_smpte"/>
     <addaction name="separator"/>
+    <addaction name="timeline_in"/>
+    <addaction name="timeline_out"/>
+    <addaction name="separator"/>
+    <addaction name="timeline_clearinout"/>
+   </widget>
+   <widget class="QMenu" name="menuUtils">
+    <property name="title">
+     <string>Utils</string>
+    </property>
+    <addaction name="utils_showinfinder"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menuTimeline"/>
+   <addaction name="menuUtils"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="menu_play">
@@ -920,6 +1029,45 @@
     <string>S</string>
    </property>
   </action>
+  <action name="menu_next10">
+   <property name="text">
+    <string>Go to &gt; Next 10 frame</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+Right</string>
+   </property>
+  </action>
+  <action name="menu_previous10">
+   <property name="text">
+    <string>Go to &gt; Previous 10 frame</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+Left</string>
+   </property>
+  </action>
+  <action name="timeline_in">
+   <property name="text">
+    <string>Mark in</string>
+   </property>
+  </action>
+  <action name="timeline_out">
+   <property name="text">
+    <string>Mark out</string>
+   </property>
+  </action>
+  <action name="timeline_clearinout">
+   <property name="text">
+    <string>Clear in out</string>
+   </property>
+  </action>
+  <action name="utils_showinfinder">
+   <property name="text">
+    <string>Show in finder ...</string>
+   </property>
+   <property name="shortcut">
+    <string>Return</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -932,6 +1080,12 @@
    <class>Timeline</class>
    <extends>QWidget</extends>
    <header>../../../timeline.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>Timeedit</class>
+   <extends>QWidget</extends>
+   <header>../../../timeedit.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

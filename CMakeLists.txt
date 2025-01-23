@@ -45,6 +45,8 @@ set (app_sources
     rhiwidget.cpp
     test.h
     test.cpp
+    timeedit.h
+    timeedit.cpp
     timeline.h
     timeline.cpp
     flipman.ui

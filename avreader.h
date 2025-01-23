@@ -34,11 +34,12 @@ class AVReader : public QObject {
         QString filename() const;
         QString title() const;
         AVTimeRange range() const;
+        AVTimeRange io() const;
+        AVTime start() const;
         AVTime time() const;
+        AVSmpteTime timecode() const;
         AVFps fps() const;
         bool loop() const;
-        AVSmpteTime smptetime() const;
-        AVSmpteTime start() const;
         AVMetadata metadata();
         AVSidecar sidecar();
         QList<QString> extensions() const;
@@ -47,6 +48,7 @@ class AVReader : public QObject {
 
     public Q_SLOTS:
         void set_loop(bool loop);
+        void set_io(const AVTimeRange& io);
         void set_everyframe(bool everyframe);
         void seek(const AVTime& time);
         void stream();
@@ -54,15 +56,17 @@ class AVReader : public QObject {
 
     Q_SIGNALS:
         void opened(const QString& filename);
-        void time_changed(const AVTime& time);
-        void smptetime_changed(const AVSmpteTime& timecode);
         void range_changed(const AVTimeRange& timerange);
+        void io_changed(const AVTimeRange& io);
+        void start_changed(const AVTime& time);
+        void time_changed(const AVTime& time);
+        void timecode_changed(const AVTime& time);
         void video_changed(const QImage& image);
         void audio_changed(const QByteArray& buffer);
         void loop_changed(bool loop);
         void everyframe_changed(bool everyframe);
+        void actualfps_changed(qreal fps);
         void stream_changed(bool streaming);
-        void actual_fps_changed(qreal fps);
 
     private:
         QScopedPointer<AVReaderPrivate> p;

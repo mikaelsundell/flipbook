@@ -10,6 +10,7 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QComboBox>
+#include <QDesktopServices>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QHBoxLayout>
@@ -40,21 +41,21 @@ class FlipmanPrivate : public QObject
         void seek(AVTime time);
         void seek_start();
         void seek_previous();
+        void seek_previous10();
         void seek_next();
+        void seek_next10();
         void seek_end();
         void seek_frame(qint64 frame);
         void seek_time(const AVTime& time);
         void seek_finished();
         void stream(bool checked);
         void stop();
-    
         void set_opened(const QString& filename);
         void set_video(const QImage& image);
         void set_audio(const QByteArray& buffer);
         void set_time(const AVTime& time);
-        void set_smptetime(const AVSmpteTime& smptetime);
+        void set_timecode(const AVTime& time);
         void set_actual_fps(float fps);
-    
         void fullscreen(bool checked);
         void loop(bool checked);
         void everyframe(bool everyframe);
@@ -64,7 +65,7 @@ class FlipmanPrivate : public QObject
     
         void power(Platform::Power power);
         void stayawake(bool checked);
-    
+        void showinfinder();
         void debug();
 
     public:
@@ -146,8 +147,10 @@ FlipmanPrivate::init()
     connect(ui->menu_open, &QAction::triggered, this, &FlipmanPrivate::open);
     connect(ui->menu_start, &QAction::triggered, this, &FlipmanPrivate::seek_start);
     connect(ui->menu_previous, &QAction::triggered, this, &FlipmanPrivate::seek_previous);
+    connect(ui->menu_previous10, &QAction::triggered, this, &FlipmanPrivate::seek_previous10);
     connect(ui->menu_play, &QAction::triggered, this, &FlipmanPrivate::stream);
     connect(ui->menu_next, &QAction::triggered, this, &FlipmanPrivate::seek_next);
+    connect(ui->menu_next10, &QAction::triggered, this, &FlipmanPrivate::seek_next10);
     connect(ui->menu_end, &QAction::triggered, this, &FlipmanPrivate::seek_end);
     connect(ui->menu_loop, &QAction::triggered, this, &FlipmanPrivate::loop);
     connect(ui->menu_fullscreen, &QAction::triggered, this, &FlipmanPrivate::fullscreen);
@@ -172,6 +175,7 @@ FlipmanPrivate::init()
             actions->addAction(ui->timeline_smpte);
         }
     }
+    connect(ui->utils_showinfinder, &QAction::triggered, this, &FlipmanPrivate::showinfinder);
     // timeline
     connect(ui->timeline, &Timeline::slider_pressed, this, &FlipmanPrivate::stop);
     connect(ui->timeline, &Timeline::slider_moved, this, &FlipmanPrivate::seek_time);
@@ -186,8 +190,8 @@ FlipmanPrivate::init()
     connect(reader.data(), &AVReader::video_changed, this, &FlipmanPrivate::set_video);
     connect(reader.data(), &AVReader::audio_changed, this, &FlipmanPrivate::set_audio);
     connect(reader.data(), &AVReader::time_changed, this, &FlipmanPrivate::set_time);
-    connect(reader.data(), &AVReader::smptetime_changed, this, &FlipmanPrivate::set_smptetime);
-    connect(reader.data(), &AVReader::actual_fps_changed, this, &FlipmanPrivate::set_actual_fps);
+    connect(reader.data(), &AVReader::timecode_changed, this, &FlipmanPrivate::set_timecode);
+    connect(reader.data(), &AVReader::actualfps_changed, this, &FlipmanPrivate::set_actual_fps);
     connect(reader.data(), &AVReader::stream_changed, ui->menu_play, &QAction::setChecked);
     connect(reader.data(), &AVReader::stream_changed, ui->tool_play, &QPushButton::setChecked);
     connect(reader.data(), &AVReader::loop_changed, ui->menu_loop, &QAction::setChecked);
@@ -207,6 +211,9 @@ FlipmanPrivate::eventFilter(QObject* object, QEvent* event)
         if (mousevent->button() == Qt::LeftButton) {
             dragging = true;
             position = mousevent->globalPosition() - window->frameGeometry().topLeft();
+            if (window->focusWidget()) {
+                window->focusWidget()->clearFocus();
+            }
             return true;
         }
     }
@@ -331,9 +338,21 @@ FlipmanPrivate::seek_previous()
 }
 
 void
+FlipmanPrivate::seek_previous10()
+{
+    seek_frame(-10);
+}
+
+void
 FlipmanPrivate::seek_next()
 {
     seek_frame(1);
+}
+
+void
+FlipmanPrivate::seek_next10()
+{
+    seek_frame(10);
 }
 
 void
@@ -345,6 +364,7 @@ FlipmanPrivate::seek_end()
 void
 FlipmanPrivate::seek_frame(qint64 frame)
 {
+    stop();
     AVTime time = reader->time();
     run_seek(AVTime(time.ticks(time.frames() + frame), time.timescale(), time.fps()));
 }
@@ -436,6 +456,9 @@ void
 FlipmanPrivate::frames()
 {
     ui->timeline->set_timecode(Timeline::FRAMES);
+    ui->timecode->set_timecode(Timeedit::FRAMES);
+    ui->timeline_start->set_timecode(Timeedit::FRAMES);
+    ui->timeline_duration->set_timecode(Timeedit::FRAMES);
     set_time(reader->time());
 }
 
@@ -443,6 +466,9 @@ void
 FlipmanPrivate::time()
 {
     ui->timeline->set_timecode(Timeline::TIME);
+    ui->timecode->set_timecode(Timeedit::TIME);
+    ui->timeline_start->set_timecode(Timeedit::TIME);
+    ui->timeline_duration->set_timecode(Timeedit::TIME);
     set_time(reader->time());
 }
 
@@ -450,6 +476,9 @@ void
 FlipmanPrivate::smpte()
 {
     ui->timeline->set_timecode(Timeline::SMPTE);
+    ui->timecode->set_timecode(Timeedit::SMPTE);
+    ui->timeline_start->set_timecode(Timeedit::SMPTE);
+    ui->timeline_duration->set_timecode(Timeedit::SMPTE);
     set_time(reader->time());
 }
 
@@ -473,6 +502,14 @@ FlipmanPrivate::stayawake(bool checked)
 }
 
 void
+FlipmanPrivate::showinfinder()
+{
+    if (reader->is_open()) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(reader->filename()));
+    }
+}
+
+void
 FlipmanPrivate::debug()
 {
     // todo: place holder for debug tests
@@ -487,8 +524,8 @@ FlipmanPrivate::set_opened(const QString& filename)
         ui->fps->setValue(reader->fps());
         ui->actual_fps->setText(QString::number(reader->fps()));
         ui->playback_widget->setEnabled(true);
-        ui->timeline_start->setText(range.start().to_string());
-        ui->timeline_duration->setText(range.end().to_string());
+        ui->timeline_start->set_time(range.start());
+        ui->timeline_duration->set_time(range.end());
         ui->timeline->set_time(reader->time());
         ui->timeline->set_range(reader->range());
         ui->timeline->setEnabled(true);
@@ -546,24 +583,17 @@ void
 FlipmanPrivate::set_time(const AVTime& time)
 {
     ui->frame->setText(QString("%1").arg(time.frames(), 4, 10, QChar('0')));
-    if (ui->timeline->timecode() == Timeline::Timecode::FRAMES) {
-        ui->timeline_start->setText(QString::number(time.frames()));
-        ui->timeline_duration->setText(QString::number(reader->range().duration().frames()));
-    }
-    else if (ui->timeline->timecode() == Timeline::Timecode::TIME) {
-        ui->timeline_start->setText(time.to_string());
-        ui->timeline_duration->setText(reader->range().duration().to_string());
-    }
-    else if (ui->timeline->timecode() == Timeline::Timecode::SMPTE) {
-        ui->timeline_start->setText(AVSmpteTime(time).to_string());
-        ui->timeline_duration->setText(AVSmpteTime(reader->range().duration()).to_string());
-    }
+    ui->timecode->set_time(time);
+    ui->timeline_start->set_time(time);
+    ui->timeline_duration->set_time(reader->range().duration());
+    ui->time_timecode->setText(AVSmpteTime(time).to_string());
 }
 
 void
-FlipmanPrivate::set_smptetime(const AVSmpteTime& smptetime)
+FlipmanPrivate::set_timecode(const AVTime& time)
 {
-    ui->smptetime->setText(smptetime.to_string());
+    ui->timeline_timecode->setText(AVSmpteTime(time).to_string());
+    ui->timeline_frame->setText(QString::number(time.frames()));
 }
 
 void

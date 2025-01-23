@@ -23,7 +23,6 @@ class AVTimeRange
         QString to_string() const;
         void invalidate();
         bool valid() const;
-    
         void set_start(AVTime start);
         void set_duration(AVTime duration);
 
@@ -31,8 +30,8 @@ class AVTimeRange
         bool operator==(const AVTimeRange& other) const;
         bool operator!=(const AVTimeRange& other) const;
     
-        static AVTimeRange timescale(const AVTimeRange& timerange, const AVFps& to);
-        static AVTimeRange timescale(const AVTimeRange& timerange, qint32 timescale = 24000);
+        static AVTimeRange convert(const AVTimeRange& timerange, const AVFps& to);
+        static AVTimeRange convert(const AVTimeRange& timerange, qint32 timescale = 24000);
     
     private:
         QExplicitlySharedDataPointer<AVTimeRangePrivate> p;

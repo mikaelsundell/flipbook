@@ -24,14 +24,14 @@ class AVSmpteTime {
         qint16 subframe_divisor() const;
         qint64 frame() const;
         AVTime time() const;
-        bool allow_negatives() const;
-        bool max_24hours() const;
+        bool negatives() const;
+        bool fullhours() const;
         QString to_string() const;
         void invalidate();
         bool valid() const;
         void set_time(const AVTime& time);
-        void set_allow_negatives(bool allow_negatives);
-        void set_max24hours(bool max_24hours);
+        void set_negatives(bool negatives);
+        void set_fullhours(bool fullhours);
     
         AVSmpteTime& operator=(const AVSmpteTime& other);
         bool operator==(const AVSmpteTime& other) const;
@@ -43,9 +43,8 @@ class AVSmpteTime {
         AVSmpteTime operator+(const AVSmpteTime& other) const;
         AVSmpteTime operator-(const AVSmpteTime& other) const;
     
-        static qint64 dropframe(quint64 frame, const AVFps& fps, bool inverse = false);
-        static qint64 frame(quint16 hours, quint16 minutes, quint16 seconds, quint16 frames, const AVFps& fps);
-        static AVSmpteTime combine(const AVTime& time, const AVTime& other);
+        static qint64 convert(quint64 frame, const AVFps& from, const AVFps& to);
+        static qint64 convert(quint64 frame, const AVFps& fps, bool invert = false);
                                    
     private:
         QExplicitlySharedDataPointer<AVSmpteTimePrivate> p;

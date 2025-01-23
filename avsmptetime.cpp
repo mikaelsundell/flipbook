@@ -21,8 +21,8 @@ class AVSmpteTimePrivate
             qint16 frames = 0;
             qint16 subframes = 1;
             qint16 subframe_divisor = 0;
-            bool allow_negatives = true;
-            bool max_24hours = true;
+            bool negatives = true;
+            bool fullhours = true;
         };
         Data d;
         QAtomicInt ref;
@@ -52,16 +52,16 @@ AVSmpteTimePrivate::update()
         is_negative = true;
         frame = -frame;
     }
-    frame = AVSmpteTime::dropframe(frame, d.time.fps(), true);
+    frame = AVSmpteTime::convert(frame, d.time.fps(), true);
     d.frames = frame % framequanta;
     frame /= framequanta;
     d.seconds =  frame % 60;
     frame /= 60;
     d.minutes = frame % 60;
     frame /= 60;
-    if (d.max_24hours) {
+    if (d.fullhours) {
         frame %= 24;
-        if (is_negative && !d.allow_negatives) {
+        if (is_negative && !d.negatives) {
             is_negative = false;
             frame = 23 - frame;
         }
@@ -148,9 +148,9 @@ AVSmpteTime::time() const
 }
 
 bool
-AVSmpteTime::allow_negatives() const
+AVSmpteTime::negatives() const
 {
-    return p->d.allow_negatives;
+    return p->d.negatives;
 }
 
 void
@@ -164,25 +164,25 @@ AVSmpteTime::set_time(const AVTime& time)
 }
 
 void
-AVSmpteTime::set_allow_negatives(bool allow_negatives)
+AVSmpteTime::set_negatives(bool negatives)
 {
-    if (p->d.allow_negatives != allow_negatives) {
+    if (p->d.negatives != negatives) {
         if (p->ref.loadRelaxed() > 1) {
             p.detach();
         }
-        p->d.allow_negatives = allow_negatives;
+        p->d.negatives = negatives;
         p->update();
     }
 }
 
 void
-AVSmpteTime::set_max24hours(bool max_24hours)
+AVSmpteTime::set_fullhours(bool fullhours)
 {
-    if (p->d.max_24hours != max_24hours) {
+    if (p->d.fullhours != fullhours) {
         if (p->ref.loadRelaxed() > 1) {
             p.detach();
         }
-        p->d.max_24hours = max_24hours;
+        p->d.fullhours = fullhours;
         p->update();
     }
 }
@@ -285,10 +285,28 @@ AVSmpteTime::operator-(const AVSmpteTime& other) const {
 }
 
 qint64
-AVSmpteTime::dropframe(quint64 frame, const AVFps& fps, bool inverse)
+AVSmpteTime::convert(quint64 frame, const AVFps& from, const AVFps& to)
+{
+    if (from != to) {
+        if (from.frame_quanta() == to.frame_quanta()) {
+            if (from.drop_frame() && !to.drop_frame()) {
+                frame = AVSmpteTime::convert(frame, from, true);
+            }
+            else if (!from.drop_frame() && to.drop_frame()) {
+                frame = AVSmpteTime::convert(frame, to, false);
+            }
+        } else {
+            frame = AVFps::convert(frame, to, from);
+        }
+    }
+    return frame;
+}
+
+qint64
+AVSmpteTime::convert(quint64 frame, const AVFps& fps, bool invert)
 {
     qint64 frametime = frame;
-    if (!inverse) {
+    if (!invert) {
         if (fps.drop_frame()) {
             qint16 framequanta = fps.frame_quanta();
             qint64 framemin = framequanta * 60;
@@ -325,42 +343,4 @@ AVSmpteTime::dropframe(quint64 frame, const AVFps& fps, bool inverse)
         }
     }
     return frametime;
-}
-
-qint64
-AVSmpteTime::frame(quint16 hours, quint16 minutes, quint16 seconds, quint16 frames, const AVFps& fps)
-{
-    int64_t frame = 0;
-    qint16 framequanta = fps;
-    frame = frames;
-    frame += seconds * framequanta;
-    frame += (minutes & ~0x80) * framequanta * 60; // 0x80 negative bit in minutes
-    frame += hours * framequanta * 60 * 60;
-    int64_t fpm = framequanta * 60;
-    frame = AVSmpteTime::dropframe(frame, fps);
-    if (minutes & 0x80) // check for negative bit
-        frame = -frame;
-    return frame;
-}
-
-
-AVSmpteTime
-AVSmpteTime::combine(const AVTime& time, const AVTime& other)
-{
-    AVFps fps = time.fps();
-    AVFps fpsother = other.fps();
-    qint64 frames = other.frames();
-    if (fps != fpsother) {
-        if (fps.frame_quanta() == fpsother.frame_quanta()) {
-            if (fps.drop_frame() && !fpsother.drop_frame()) {
-                frames = AVSmpteTime::dropframe(frames, fps, false);
-            }
-            else if (!fps.drop_frame() && fpsother.drop_frame()) {
-                frames = AVSmpteTime::dropframe(frames, fpsother, true);
-            }
-        } else {
-            frames = AVFps::convert(frames, fpsother, fps);
-        }
-    }
-    return AVSmpteTime(AVTime(time.frames() + frames, fps));
 }

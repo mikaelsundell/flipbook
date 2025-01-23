@@ -47,9 +47,8 @@ class AVTime
         AVTime operator+(const AVTime& other) const;
         AVTime operator-(const AVTime& other) const;
     
-        static AVTime convert(const AVTime& time, const AVFps& from, const AVFps& to);
-        static AVTime timescale(const AVTime& time, const AVFps& to);
-        static AVTime timescale(const AVTime& time, qint32 timescale = 24000);
+        static AVTime convert(const AVTime& time, const AVFps& to);
+        static AVTime convert(const AVTime& time, qint32 timescale = 24000);
 
     private:
         QExplicitlySharedDataPointer<AVTimePrivate> p;

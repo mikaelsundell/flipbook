@@ -262,19 +262,13 @@ AVTime::operator-(const AVTime& other) const {
 }
 
 AVTime
-AVTime::convert(const AVTime& time, const AVFps& from, const AVFps& to)
+AVTime::convert(const AVTime& time, const AVFps& to)
 {
-    return AVTime(AVFps::convert(time.ticks(), from, to), time.timescale(), to);
+    return convert(time, to.frame_quanta() * 1000);
 }
 
 AVTime
-AVTime::timescale(const AVTime& time, const AVFps& to)
-{
-    return timescale(time, to.frame_quanta() * 1000);
-}
-
-AVTime
-AVTime::timescale(const AVTime& time, qint32 timescale)
+AVTime::convert(const AVTime& time, qint32 timescale)
 {
     qint64 numerator = time.ticks() * timescale;
     qint64 remainder = numerator % time.timescale();

@@ -142,13 +142,13 @@ AVTimeRange::operator!=(const AVTimeRange& other) const
 }
 
 AVTimeRange
-AVTimeRange::timescale(const AVTimeRange& timerange, const AVFps& to)
+AVTimeRange::convert(const AVTimeRange& timerange, const AVFps& to)
 {
-    return AVTimeRange(AVTime::timescale(timerange.start(), to), AVTime::timescale(timerange.duration(), to));
+    return AVTimeRange(AVTime::convert(timerange.start(), to), AVTime::convert(timerange.duration(), to));
 }
 
 AVTimeRange
-AVTimeRange::timescale(const AVTimeRange& timerange, qint32 timescale)
+AVTimeRange::convert(const AVTimeRange& timerange, qint32 timescale)
 {
-    return AVTimeRange(AVTime::timescale(timerange.start(), timescale), AVTime::timescale(timerange.duration(), timescale));
+    return AVTimeRange(AVTime::convert(timerange.start(), timescale), AVTime::convert(timerange.duration(), timescale));
 }

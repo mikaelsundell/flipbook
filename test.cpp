@@ -8,6 +8,9 @@
 #include "avfps.h"
 #include "avtimer.h"
 
+#include <QApplication>
+#include "timeedit.h"
+
 #include <QThread>
 #include <QtConcurrent>
 
@@ -37,7 +40,7 @@ test_time() {
     
     qDebug() << "ticks frames: " << time.frames();
     
-    time = AVTime::timescale(time, 24000);
+    time = AVTime::convert(time, 24000);
     Q_ASSERT("ticks to frame" && time.frames() == 16);
     Q_ASSERT("ticks to frame" && time.frame(time.ticks()) == 16);
     Q_ASSERT("ticks align" && time.align(time.ticks()) == time.ticks());
@@ -45,7 +48,7 @@ test_time() {
     qDebug() << "ticks: " << time.ticks();
     qDebug() << "ticks frames: " << time.frames();
     
-    time = AVTime::timescale(time, 30000);
+    time = AVTime::convert(time, 30000);
     qDebug() << "ticks: " << time.ticks();
     Q_ASSERT("ticks" && time.ticks() == 16016);
     
@@ -61,13 +64,12 @@ test_time() {
     
     time.set_ticks(time.ticks(time.frames() + 1));
     qDebug() << "frames: " << time.frames();
-    
 }
 
 void test_timerange() {
     AVTimeRange timerange;
     timerange.set_start(AVTime(12000, 24000, AVFps::fps_24()));
-    AVTime duration = AVTime::timescale(AVTime(384000, 48000, AVFps::fps_24()), timerange.start().timescale());
+    AVTime duration = AVTime::convert(AVTime(384000, 48000, AVFps::fps_24()), timerange.start().timescale());
     timerange.set_duration(duration);
     Q_ASSERT("convert timescale" && duration.ticks() == 192000);
     Q_ASSERT("end ticks" && timerange.end().ticks() == 204000);
@@ -130,8 +132,8 @@ void test_smpte() {
     Q_ASSERT("86496 frames is 3604" && qFuzzyCompare(time.seconds(), 3604));
     qDebug() << "time: " << time.seconds();
     
-    qint64 frame_df_23_976 = AVSmpteTime::dropframe(frame, AVFps::fps_23_976());
-    qint64 frame_24 = AVSmpteTime::dropframe(frame_df_23_976, AVFps::fps_23_976(), true); // inverse
+    qint64 frame_df_23_976 = AVSmpteTime::convert(frame, AVFps::fps_23_976());
+    qint64 frame_24 = AVSmpteTime::convert(frame_df_23_976, AVFps::fps_23_976(), true); // inverse
     Q_ASSERT("86496 dropframe is 86388" && frame_df_23_976 == 86388);
     Q_ASSERT("dropframe inverse does not match" && frame == frame_24);
     
@@ -144,11 +146,20 @@ void test_smpte() {
     Q_ASSERT("smpte is 01:00:04:00 for 30 fps" && smpte.to_string() == "01:00:04:00");
     qDebug() << "smpte 30 fps: " << smpte.to_string();
     
-    qint64 frame_23_976 = AVFps::convert(frame_30, AVFps::fps_30(), AVFps::fps_24()); // pre-convert to framequanta
-    frame_23_976 = AVSmpteTime::dropframe(frame_24, AVFps::fps_23_976());
+    qint64 frame_23_976 = AVSmpteTime::convert(frame_24, AVFps::fps_23_976());
     smpte = AVSmpteTime(AVTime(frame_23_976, AVFps::fps_23_976()));
     Q_ASSERT("smpte is 01:00:04.00 for 23.976 fps" && smpte.to_string() == "01:00:04.00");
     qDebug() << "smpte 23.976 fps: " << smpte.to_string();
+    
+    qint64 frame_29_997 = 440658;
+    smpte = AVSmpteTime(AVTime(frame_29_997, AVFps::fps_29_97()));
+    Q_ASSERT("smpte is 04:05:03.10" && smpte.to_string() == "04:05:03.10");
+    qDebug() << "smpte 29_97 fps: " << smpte.to_string();
+
+    frame_29_997 = 442698;
+    smpte = AVSmpteTime(AVTime(frame_29_997, AVFps::fps_29_97()));
+    Q_ASSERT("smpte is 04:06:11.12" && smpte.to_string() == "04:06:11.12");
+    qDebug() << "smpte 29_97 fps: " << smpte.to_string();
     
     // quicktime data:
     // 01:00:04:00
@@ -172,7 +183,7 @@ void test_smpte() {
     qDebug()  << "offset max: " << offset.frames();
     qDebug()  << "offset smpte: " << AVSmpteTime(offset).to_string();
     
-    frame = AVSmpteTime::dropframe(offset.frames(), AVFps::fps_23_976()); // fix it to 01:00:04:00, match 23.976 timecode, drop frame
+    frame = AVSmpteTime::convert(offset.frames(), AVFps::fps_23_976()); // fix it to 01:00:04:00, match 23.976 timecode, drop frame
     Q_ASSERT("drop frame is 86388" && frame == 86388);
     qDebug()  << "offset dropframe: " << frame;
 
@@ -198,13 +209,15 @@ void test_smpte() {
     // frame: 87040, converted to 87148 at fps: 23.967
     // 01:00:31:04
     // 01:00:30 (wall clock time)
+    // 24 NDF is used in Resolve for 23.967 for timecode
+    
     frame = 87040;
     time = AVTime(frame, AVFps::fps_23_976());
     Q_ASSERT("time is 01:00:30" && time.to_string() == "01:00:30");
     qDebug() << "time: " << time.to_string();
     
     smpte = AVSmpteTime(time);
-    Q_ASSERT("smpte is 01:00:31:04 for 23.976 fps" && smpte.to_string() == "01:00:31.04");
+    Q_ASSERT("smpte is 01:00:31.04 for 23.976 fps" && smpte.to_string() == "01:00:31.04");
     qDebug() << "smpte 23.976: " << smpte.to_string();
 }
 

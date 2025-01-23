@@ -30,6 +30,7 @@ class TimelinePrivate
         void paint_text(QPainter& p, int x, int y, qint64 value, qint64 start, qint64 duration, bool bold = false, QBrush brush = Qt::white);
         void paint_timeline(QPainter& p);
         QPixmap paint();
+    
         struct Time
         {
             qreal top;
@@ -381,13 +382,12 @@ TimelinePrivate::paint()
                 int pad = 4;
                 int textw = metrics.horizontalAdvance(QString().fill('0', text.size())) + 2 * pad;
                 int texth = metrics.height() + 2 * pad;
-                
                 int min = mapToX(start) + textw / 2 - d.marginrange / 2;
                 int max = mapToX(duration) - textw / 2 + d.marginrange / 2;
                 int bound = qBound(min, pos, max);
                 QRect rect(bound - textw / 2, y - texth / 2, textw, texth);
                 p.setPen(Qt::black);
-                p.setBrush(Qt::white);
+                p.setBrush(Qt::gray);
                 p.drawRect(rect);
                 p.drawText(rect, Qt::AlignCenter, text);
             }
