@@ -261,5 +261,5 @@ AVFps::fps_60()
 qint64
 AVFps::convert(quint64 value, const AVFps& from, const AVFps& to)
 {
-    return value * (to / from);
+    return qRound(static_cast<qreal>(value) * (to / from));
 }

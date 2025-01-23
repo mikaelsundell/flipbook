@@ -132,6 +132,14 @@ void test_smpte() {
     Q_ASSERT("86496 frames is 3604" && qFuzzyCompare(time.seconds(), 3604));
     qDebug() << "time: " << time.seconds();
     
+    qint64 frame_fps = frame;
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_24(), AVFps::fps_23_976());
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_23_976(), AVFps::fps_50());
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_50(), AVFps::fps_23_976());
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_23_976(), AVFps::fps_24());
+    Q_ASSERT("frame fps is 86496" && frame_fps == frame);
+    qDebug() << "frame_fps: " << frame_fps;
+
     qint64 frame_df_23_976 = AVSmpteTime::convert(frame, AVFps::fps_23_976());
     qint64 frame_24 = AVSmpteTime::convert(frame_df_23_976, AVFps::fps_23_976(), true); // inverse
     Q_ASSERT("86496 dropframe is 86388" && frame_df_23_976 == 86388);

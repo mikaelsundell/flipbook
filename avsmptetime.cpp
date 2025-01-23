@@ -288,15 +288,14 @@ qint64
 AVSmpteTime::convert(quint64 frame, const AVFps& from, const AVFps& to)
 {
     if (from != to) {
-        if (from.frame_quanta() == to.frame_quanta()) {
-            if (from.drop_frame() && !to.drop_frame()) {
-                frame = AVSmpteTime::convert(frame, from, true);
-            }
-            else if (!from.drop_frame() && to.drop_frame()) {
-                frame = AVSmpteTime::convert(frame, to, false);
-            }
-        } else {
-            frame = AVFps::convert(frame, to, from);
+        if (from.frame_quanta() != to.frame_quanta()) {
+            frame = AVFps::convert(frame, from, to);
+        }
+        if (from.drop_frame() && !to.drop_frame()) {
+            frame = AVSmpteTime::convert(frame, from, true);
+        }
+        else if (!from.drop_frame() && to.drop_frame()) {
+            frame = AVSmpteTime::convert(frame, to, false);
         }
     }
     return frame;
