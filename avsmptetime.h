@@ -44,7 +44,7 @@ class AVSmpteTime {
         AVSmpteTime operator-(const AVSmpteTime& other) const;
     
         static qint64 convert(quint64 frame, const AVFps& from, const AVFps& to);
-        static qint64 convert(quint64 frame, const AVFps& fps, bool invert = false);
+        static qint64 convert(quint64 frame, const AVFps& fps, bool reverse = false);
                                    
     private:
         QExplicitlySharedDataPointer<AVSmpteTimePrivate> p;

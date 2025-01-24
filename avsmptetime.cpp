@@ -288,13 +288,21 @@ qint64
 AVSmpteTime::convert(quint64 frame, const AVFps& from, const AVFps& to)
 {
     if (from != to) {
-        if (from.frame_quanta() != to.frame_quanta()) {
-            frame = AVFps::convert(frame, from, to);
-        }
         if (from.drop_frame() && !to.drop_frame()) {
             frame = AVSmpteTime::convert(frame, from, true);
         }
-        else if (!from.drop_frame() && to.drop_frame()) {
+        if (from.frame_quanta() != to.frame_quanta()) {
+            AVFps from_fq = from;
+            AVFps to_fq = to;
+            if (from.drop_frame()) {
+                from_fq = AVFps(from.frame_quanta(), 1);
+            }
+            if (to.drop_frame()) {
+                to_fq = AVFps(to.frame_quanta(), 1);
+            }
+            frame = AVFps::convert(frame, from_fq, to_fq);
+        }
+        if (!from.drop_frame() && to.drop_frame()) {
             frame = AVSmpteTime::convert(frame, to, false);
         }
     }
@@ -302,10 +310,10 @@ AVSmpteTime::convert(quint64 frame, const AVFps& from, const AVFps& to)
 }
 
 qint64
-AVSmpteTime::convert(quint64 frame, const AVFps& fps, bool invert)
+AVSmpteTime::convert(quint64 frame, const AVFps& fps, bool reverse)
 {
     qint64 frametime = frame;
-    if (!invert) {
+    if (!reverse) {
         if (fps.drop_frame()) {
             qint16 framequanta = fps.frame_quanta();
             qint64 framemin = framequanta * 60;
@@ -317,11 +325,12 @@ AVSmpteTime::convert(quint64 frame, const AVFps& fps, bool invert)
                 qint64 num1s = left / framemin;
                 if (num1s > 0) {
                     adjust -= (num1s - 1) * 2;
-                    left = left % framemin;
+                    left %= framemin;
+
                     if (left > 1) {
-                        left -= 2;
+                        left = qBound(qint64(0), left - 2, framemin);
                     } else {
-                        left -= (left + 1);
+                        left = qBound(qint64(0), left - (left + 1), framemin);
                     }
                 }
             }
@@ -334,11 +343,11 @@ AVSmpteTime::convert(quint64 frame, const AVFps& fps, bool invert)
             qint64 frame10min = framemin * 10 - 9 * 2;
             qint64 frame10minblocks = frametime / frame10min;
             qint64 remaining = frametime % frame10min;
-            qint64 adjust = (frame10minblocks * 9 * 2);
+            qint64 adjust = frame10minblocks * (9 * 2);
             if (remaining >= framemin) {
                 adjust += (remaining / framemin) * 2;
             }
-            frametime += adjust;
+            frametime = qBound(qint64(0), frametime + adjust, std::numeric_limits<qint64>::max());
         }
     }
     return frametime;

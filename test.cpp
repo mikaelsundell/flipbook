@@ -133,19 +133,39 @@ void test_smpte() {
     qDebug() << "time: " << time.seconds();
     
     qint64 frame_fps = frame;
-    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_24(), AVFps::fps_23_976());
-    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_23_976(), AVFps::fps_50());
+    AVSmpteTime smpte(AVTime(frame_fps, AVFps::fps_24()));
+    Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04:00");
+    
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_24(), AVFps::fps_50());
+    smpte = AVSmpteTime(AVTime(frame_fps, AVFps::fps_50()));
+    Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04:00");
+    
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_50(), AVFps::fps_25());
+    smpte = AVSmpteTime(AVTime(frame_fps, AVFps::fps_25()));
+    Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04:00");
+    
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_25(), AVFps::fps_50());
+    smpte = AVSmpteTime(AVTime(frame_fps, AVFps::fps_50()));
+    Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04:00");
+    
     frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_50(), AVFps::fps_23_976());
-    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_23_976(), AVFps::fps_24());
-    Q_ASSERT("frame fps is 86496" && frame_fps == frame);
-    qDebug() << "frame_fps: " << frame_fps;
+    smpte = AVSmpteTime(AVTime(frame_fps, AVFps::fps_23_976()));
+    Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04.00");
+    
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_23_976(), AVFps::fps_50());
+    smpte = AVSmpteTime(AVTime(frame_fps, AVFps::fps_50()));
+    Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04:00");
+    
+    frame_fps = AVSmpteTime::convert(frame_fps, AVFps::fps_50(), AVFps::fps_24());
+    smpte = AVSmpteTime(AVTime(frame_fps, AVFps::fps_24()));
+    Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04:00");
 
     qint64 frame_df_23_976 = AVSmpteTime::convert(frame, AVFps::fps_23_976());
     qint64 frame_24 = AVSmpteTime::convert(frame_df_23_976, AVFps::fps_23_976(), true); // inverse
     Q_ASSERT("86496 dropframe is 86388" && frame_df_23_976 == 86388);
     Q_ASSERT("dropframe inverse does not match" && frame == frame_24);
     
-    AVSmpteTime smpte(time);
+    smpte = AVSmpteTime(time);
     Q_ASSERT("smpte is 01:00:04:00" && smpte.to_string() == "01:00:04:00");
     qDebug() << "smpte 24 fps: " << smpte.to_string();
     
